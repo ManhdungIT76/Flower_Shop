@@ -1,0 +1,45 @@
+Array
+(
+    [gateway] => MBBank
+    [transactionDate] => 2025-11-13 15:14:00
+    [accountNumber] => 0363074451
+    [subAccount] => 
+    [code] => 
+    [content] => MBVCB.11712099167.425384.HD005.CT tu 1026491736 NGUYEN MANH DUNG toi 0363074451 NGUYEN MANH DUNG tai MB-Ma GD ACSP/ pd425384
+    [transferType] => in
+    [description] => BankAPINotify MBVCB.11712099167.425384.HD005.CT tu 1026491736 NGUYEN MANH DUNG toi 0363074451 NGUYEN MANH DUNG tai MB-Ma GD ACSP/ pd425384
+    [transferAmount] => 2000
+    [referenceCode] => FT25317002904295
+    [accumulated] => 0
+    [id] => 30367934
+)
+Array
+(
+    [gateway] => MBBank
+    [transactionDate] => 2025-11-13 15:23:00
+    [accountNumber] => 0363074451
+    [subAccount] => 
+    [code] => 
+    [content] => MBVCB.11712211929.498547.HD006.CT tu 1026491736 NGUYEN MANH DUNG toi 0363074451 NGUYEN MANH DUNG tai MB-Ma GD ACSP/ ij498547
+    [transferType] => in
+    [description] => BankAPINotify MBVCB.11712211929.498547.HD006.CT tu 1026491736 NGUYEN MANH DUNG toi 0363074451 NGUYEN MANH DUNG tai MB-Ma GD ACSP/ ij498547
+    [transferAmount] => 2000
+    [referenceCode] => FT25317459952657
+    [accumulated] => 0
+    [id] => 30369126
+)
+Array
+(
+    [gateway] => MBBank
+    [transactionDate] => 2025-11-13 15:27:00
+    [accountNumber] => 0363074451
+    [subAccount] => 
+    [code] => 
+    [content] => MBVCB.11712261990.528694.HD007.CT tu 1026491736 NGUYEN MANH DUNG toi 0363074451 NGUYEN MANH DUNG tai MB-Ma GD ACSP/ sv528694
+    [transferType] => in
+    [description] => BankAPINotify MBVCB.11712261990.528694.HD007.CT tu 1026491736 NGUYEN MANH DUNG toi 0363074451 NGUYEN MANH DUNG tai MB-Ma GD ACSP/ sv528694
+    [transferAmount] => 2000
+    [referenceCode] => FT25317120252808
+    [accumulated] => 0
+    [id] => 30369570
+)

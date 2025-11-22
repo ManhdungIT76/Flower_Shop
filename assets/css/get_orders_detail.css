@@ -1,0 +1,108 @@
+/* RESET */
+.order-detail-wrapper * {
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+/* KHUNG POPUP NẰM NGANG */
+.order-detail-wrapper {
+    background: #ffffff;
+    padding: 25px 30px;
+    border-radius: 20px;
+    max-width: 950px;
+    margin: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    display: flex;              /* Chia làm 2 cột */
+    gap: 32px;
+    animation: fadeIn 0.25s ease-out;
+}
+
+/* CỘT TRÁI */
+.order-left {
+    flex: 1.5;
+}
+
+/* CỘT PHẢI */
+.order-right {
+    flex: 1;
+    background: #faf4f1;
+    padding: 18px 22px;
+    border-radius: 16px;
+    border: 1px solid #eaded8;
+}
+
+/* TIÊU ĐỀ */
+.detail-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 18px;
+    color: #3b2e2a;
+    text-align: left;
+}
+
+/* BẢNG SẢN PHẨM */
+.order-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+}
+
+.order-table th {
+    padding-bottom: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #b67d72;
+    border-bottom: 1.5px solid #e2cfc4;
+    text-align: left;
+}
+
+.order-table td {
+    padding: 12px 0;
+    border-bottom: 1px solid #f0e6df;
+    font-size: 14px;
+    color: #4b3f36;
+    vertical-align: middle;
+}
+
+/* CỘT RỘNG */
+.order-table th:nth-child(1),
+.order-table td:nth-child(1) {
+    width: 90px;
+}
+
+.order-table th:nth-child(2),
+.order-table td:nth-child(2) {
+    width: 50%;
+}
+
+/* ẢNH */
+.product-thumb {
+    width: 70px;
+    height: 70px;
+    border-radius: 10px;
+    object-fit: cover;
+    border: 1px solid #e2d4c8;
+}
+
+/* THÔNG TIN ĐƠN */
+.order-right p {
+    margin: 8px 0;
+    font-size: 14.5px;
+    line-height: 1.55;
+}
+
+.label {
+    font-weight: 600;
+    color: #b67d72;
+}
+
+.order-right strong {
+    color: #a86b5a;
+    font-size: 15px;
+}
+
+/* ANIMATION */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

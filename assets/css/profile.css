@@ -1,0 +1,63 @@
+body {
+  background-color: #fffaf5;
+  font-family: "Poppins", sans-serif;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1; /* FIX GẠCH DƯỚI HEADER */
+}
+
+.profile-section {
+  max-width: 500px;
+  background: #fff;
+  margin: 50px auto;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.profile-section h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.profile-pic {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.profile-pic img {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+input {
+  padding: 10px 12px;
+  border: 1px solid #d8b6a4;
+  border-radius: 8px;
+}
+
+.btn {
+  background: #d8b6a4;
+  padding: 12px;
+  border: none;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: #c59a86;
+}
+
+/* FIX: Xóa mọi khoảng trắng đẩy header */
+header + section {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
