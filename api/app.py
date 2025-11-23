@@ -2,7 +2,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import mysql.connector
 from contextlib import closing
-
+import pandas as pd
+from mlxtend.frequent_patterns import apriori, association_rules
 app = Flask(__name__)
 CORS(app)
 
@@ -168,52 +169,60 @@ def nguoidung():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# =========================================
-# 6) GỢI Ý SẢN PHẨM - APRIORI REALTIME
-# =========================================
+apriori_cache = {
+    "basket": None,
+    "rules": None,
+    "last_count": 0
+}
+
 @app.route('/api/recommend')
 def recommend():
     product_id = request.args.get("product_id")
     if not product_id:
         return jsonify([])
 
-    import pandas as pd
-    from mlxtend.frequent_patterns import apriori, association_rules
-
+    # Lấy dữ liệu chi tiết đơn hàng
     with closing(get_db_connection()) as conn:
         df = pd.read_sql("SELECT order_id, product_id FROM order_details", conn)
 
     if df.empty:
         return jsonify([])
 
-    # tạo transaction matrix 0/1
-    basket = (
-        df.assign(count=1)
-        .pivot_table(index="order_id", columns="product_id", values="count", fill_value=0)
-    )
-    basket = basket.applymap(lambda x: 1 if x > 0 else 0)
+    # Cache tránh chạy Apriori liên tục
+    row_count = len(df)
+    if apriori_cache["rules"] is not None and row_count == apriori_cache["last_count"]:
+        rules = apriori_cache["rules"]
+    else:
+        basket = (
+            df.assign(count=1)
+              .pivot_table(index="order_id", columns="product_id",
+                           values="count", fill_value=0)
+        )
+        basket = basket.applymap(lambda x: 1 if x > 0 else 0)
 
-    # chạy apriori
-    frequent_items = apriori(basket, min_support=0.01, use_colnames=True)
-    if frequent_items.empty:
-        return jsonify([])
+        frequent_items = apriori(basket, min_support=0.001, use_colnames=True)
+        if frequent_items.empty:
+            return jsonify([])
 
-    rules = association_rules(frequent_items, metric="confidence", min_threshold=0.1)
-    if rules.empty:
-        return jsonify([])
+        rules = association_rules(frequent_items,
+                                  metric="confidence",
+                                  min_threshold=0.05)
+        if rules.empty:
+            return jsonify([])
 
-    # lọc luật liên quan đến sản phẩm A
+        apriori_cache["rules"] = rules
+        apriori_cache["last_count"] = row_count
+
+    # Lọc luật liên quan đến sản phẩm cần gợi ý
     rec = rules[
-        rules['antecedents'].apply(lambda x: len(x)==1 and list(x)[0]==product_id)
+        rules['antecedents']
+        .apply(lambda x: len(x) == 1 and list(x)[0] == product_id)
     ]
-
-    # lọc thêm lift
-    rec = rec[rec["lift"] >= 1.2]
+    rec = rec[rec["lift"] >= 1.0]
 
     if rec.empty:
         return jsonify([])
 
-    # lấy top 4 theo confidence
     rec = rec.sort_values("confidence", ascending=False).head(4)
 
     recommends = []
@@ -225,6 +234,7 @@ def recommend():
         })
 
     return jsonify(recommends)
+
 
 # =========================================
 # START SERVER
