@@ -33,46 +33,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout_cod'])) {
     foreach ($items as $i) $total += $i['price'];
 
     // Tạo đơn hàng
-    $stmt = $conn->prepare("
-        INSERT INTO orders 
-        (user_id, total_amount, payment_method_id, delivery_method_id, payment_status, status, note)
-        VALUES (?, ?, ?, ?, 'Chưa thanh toán', 'Chờ xác nhận', ?)
-    ");
-    $stmt->bind_param("sdsss", 
-        $user_id, $total, 
-        $payment_method_id, 
-        $delivery_method_id, 
-        $note
-    );
-    $stmt->execute();
+$stmt = $conn->prepare("
+    INSERT INTO orders 
+    (user_id, total_amount, payment_method_id, delivery_method_id, payment_status, status, note)
+    VALUES (?, ?, ?, ?, 'Chưa thanh toán', 'Chờ xác nhận', ?)
+");
+$stmt->bind_param("sdsss", 
+    $user_id, 
+    $total, 
+    $payment_method_id, 
+    $delivery_method_id, 
+    $note
+);
 
-    // Lấy order_id mới nhất
-    $res = $conn->query("SELECT order_id FROM orders ORDER BY order_date DESC LIMIT 1");
-    $order_id = $res->fetch_assoc()['order_id'];
+if (!$stmt->execute()) {
+    die("Lỗi tạo đơn hàng: " . $stmt->error);
+}
 
-    // Thêm chi tiết đơn hàng
-    foreach ($items as $i) {
-        $p = $conn->prepare("SELECT product_id FROM products WHERE product_name=? LIMIT 1");
-        $p->bind_param("s", $i['name']);
-        $p->execute();
-        $pr = $p->get_result()->fetch_assoc();
+// LẤY order_id vừa được trigger sinh ra
+$res = $conn->query("SELECT @last_order_id AS order_id");
+$row = $res->fetch_assoc();
+$order_id = $row['order_id'];
 
-        $product_id = $pr['product_id'];
-        $qty        = $i['qty'];
-        $unit_price = $i['price'] / $qty;
+if (!$order_id) {
+    die("Không lấy được mã đơn hàng!");
+}
 
-        $d = $conn->prepare("
-            INSERT INTO order_details (order_id, product_id, quantity, unit_price)
-            VALUES (?, ?, ?, ?)
-        ");
-        $d->bind_param("ssid", $order_id, $product_id, $qty, $unit_price);
-        $d->execute();
+// Insert chi tiết đơn hàng
+foreach ($items as $i) {
 
-        // Trừ kho
-        $u = $conn->prepare("UPDATE products SET stock = stock - ? WHERE product_id=?");
-        $u->bind_param("is", $qty, $product_id);
-        $u->execute();
+    // Lấy product_id
+    $p = $conn->prepare("SELECT product_id FROM products WHERE product_name=? LIMIT 1");
+    $p->bind_param("s", $i['name']);
+    $p->execute();
+    $pr = $p->get_result()->fetch_assoc();
+
+    if (!$pr) {
+        die("Không tìm thấy sản phẩm: " . $i['name']);
     }
+
+    $product_id = $pr['product_id'];
+    $qty = $i['qty'];
+    $unit_price = $i['price'] / $qty;
+
+    $d = $conn->prepare("
+        INSERT INTO order_details (order_id, product_id, quantity, unit_price)
+        VALUES (?, ?, ?, ?)
+    ");
+    $d->bind_param("ssid", $order_id, $product_id, $qty, $unit_price);
+
+    if (!$d->execute()) {
+        die("LỖI INSERT order_details — Lý do: " . $d->error);
+    }
+
+    // Trừ kho
+    $u = $conn->prepare("UPDATE products SET stock = stock - ? WHERE product_id=?");
+    $u->bind_param("is", $qty, $product_id);
+    $u->execute();
+}
+
 
     // Cập nhật địa chỉ người dùng
     $u2 = $conn->prepare("
