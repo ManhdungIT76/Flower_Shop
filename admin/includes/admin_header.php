@@ -90,11 +90,11 @@
  <div class="sidebar">
   <h2>🌸 Blossomy Bliss</h2>
 
-  <a href="/Flower_Shop/admin/dashboard.php">Tổng quan</a>
-  <a href="/Flower_Shop/admin/category/list.php">Danh mục</a>
-  <a href="/Flower_Shop/admin/products/list.php">Sản phẩm</a>
-  <a href="/Flower_Shop/admin/orders/list.php">Đơn hàng</a>
-  <a href="/Flower_Shop/index.php">Về trang chủ</a>
+  <a href="/Flower-Shop/admin/dashboard.php">Tổng quan</a>
+  <a href="/Flower-Shop/admin/category/list.php">Danh mục</a>
+  <a href="/Flower-Shop/admin/products/list.php">Sản phẩm</a>
+  <a href="/Flower-Shop/admin/orders/list.php">Đơn hàng</a>
+  <a href="/Flower-Shop/index.php">Về trang chủ</a>
 
   <button class="logout" onclick="window.location.href='/XayDungHTTT_WebBanHoa/login.php'">
     Đăng xuất

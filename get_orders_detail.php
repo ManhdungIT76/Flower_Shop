@@ -36,7 +36,7 @@ $order_date = date("d/m/Y H:i", strtotime($order["order_date"]));
 $ship_date  = date("d/m/Y H:i", strtotime($order["ship_date"]));
 ?>
 
-<link rel="stylesheet" href="/XAYDUNGHTTT_WEBBANHOA/assets/css/get_orders_detail.css">
+<link rel="stylesheet" href="assets/css/get_orders_detail.css">
 
 <div class="order-detail-wrapper">
 

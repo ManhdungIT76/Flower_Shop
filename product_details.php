@@ -3,22 +3,60 @@ session_start();
 include "include/db_connect.php";
 include "config.php";
 
-// KIỂM TRA ID
+// KIỂM TRA ID SẢN PHẨM
 if (!isset($_GET['id'])) {
     die("Không tìm thấy sản phẩm!");
 }
+
 $isLoggedIn = isset($_SESSION['user']);
 $id = $_GET['id'];
 
+// ==============================
 // LẤY THÔNG TIN SẢN PHẨM
+// ==============================
 $sql = "SELECT * FROM products WHERE product_id = '$id'";
 $result = mysqli_query($conn, $sql);
 $product = mysqli_fetch_assoc($result);
 
+if (!$product) {
+    die("Sản phẩm không tồn tại!");
+}
+
 $category_id = $product['category_id'];
 $current_id = $product['product_id'];
 
-// Lấy 4 sản phẩm bán chạy nhất cùng danh mục
+// ==============================
+// LẤY ĐÁNH GIÁ SẢN PHẨM
+// ==============================
+
+// Lấy điểm trung bình + tổng số đánh giá
+$sql_avg = "SELECT AVG(rating) AS avg_rating, COUNT(*) AS total_reviews 
+            FROM feedback 
+            WHERE product_id = ?";
+$stmt_avg = $conn->prepare($sql_avg);
+$stmt_avg->bind_param("s", $id);
+$stmt_avg->execute();
+$ratingData = $stmt_avg->get_result()->fetch_assoc();
+
+$avgRating = $ratingData['avg_rating'] ? round($ratingData['avg_rating'], 1) : 0;
+$totalReviews = $ratingData['total_reviews'];
+
+// Lấy danh sách đánh giá
+$sql_reviews = "SELECT f.*, u.full_name AS username 
+                FROM feedback f
+                JOIN users u ON f.user_id = u.user_id
+                WHERE f.product_id = ?
+                ORDER BY f.feedback_id DESC";
+
+$stmt_rev = $conn->prepare($sql_reviews);
+$stmt_rev->bind_param("s", $id);
+$stmt_rev->execute();
+$reviews = $stmt_rev->get_result();
+
+
+// ==============================
+// SẢN PHẨM LIÊN QUAN
+// ==============================
 $related_query = "
     SELECT 
         p.product_id,
@@ -36,17 +74,16 @@ $related_query = "
 ";
 $related_result = mysqli_query($conn, $related_query);
 
+
 // ==============================
-// GỌI API FLASK — APRIORI RECOMMEND
+// GỢI Ý SẢN PHẨM APRIORI
 // ==============================
 $product_id = $product['product_id'];
-
 $api_url = "http://localhost:5000/api/recommend?product_id=" . $product_id;
-$api_response = file_get_contents($api_url);
+$api_response = @file_get_contents($api_url);
 $recommend_data = json_decode($api_response, true);
 
 $recommend_products = [];
-
 if (!empty($recommend_data)) {
     foreach ($recommend_data as $rec) {
         $rid = $rec['product_id'];
@@ -58,11 +95,8 @@ if (!empty($recommend_data)) {
         }
     }
 }
-
-if (!$product) {
-    die("Sản phẩm không tồn tại!");
-}
 ?>
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -89,10 +123,12 @@ if (!$product) {
     <span><?= $product['product_name'] ?></span>
 </div>
 
-<!-- CHI TIẾT SẢN PHẨM -->
+<!-- ============================ -->
+<!--     CHI TIẾT SẢN PHẨM        -->
+<!-- ============================ -->
 <section class="product-detail">
     
-    <!-- ẢNH SẢN PHẨM -->
+    <!-- ẢNH -->
     <img src="<?= getImagePath($product['image_url']) ?>" 
          alt="<?= $product['product_name'] ?>">
 
@@ -104,7 +140,31 @@ if (!$product) {
         <?= number_format($product['price'], 0, ',', '.') ?> đ
       </p>
 
-      <!-- ⭐ MÔ TẢ SẢN PHẨM -->
+      <!-- ⭐ XẾP HẠNG -->
+      <div class="product-rating">
+          <div class="stars">
+              <?php 
+                  $fullStars = floor($avgRating);
+                  $halfStar = ($avgRating - $fullStars) >= 0.5;
+              ?>
+
+              <?php for ($i = 1; $i <= 5; $i++): ?>
+                  <?php if ($i <= $fullStars): ?>
+                      <i class="fa-solid fa-star" style="color:#ffca28;"></i>
+                  <?php elseif ($halfStar && $i == $fullStars + 1): ?>
+                      <i class="fa-solid fa-star-half-stroke" style="color:#ffca28;"></i>
+                  <?php else: ?>
+                      <i class="fa-regular fa-star" style="color:#ccc;"></i>
+                  <?php endif; ?>
+              <?php endfor; ?>
+          </div>
+
+          <span class="rating-number">
+              <?= $avgRating ?> / 5 (<?= $totalReviews ?> đánh giá)
+          </span>
+      </div>
+
+      <!-- MÔ TẢ -->
       <p>
         <?= $product['description'] ?? "Sản phẩm đang cập nhật mô tả..." ?>
       </p>
@@ -114,30 +174,31 @@ if (!$product) {
         <input type="number" min="1" value="1">
       </div>
 
-      <!-- NÚT THÊM + MUA NGAY -->
       <div class="button-group">
           <button class="btn add-to-cart-btn">
               <i class="fa-solid fa-cart-plus"></i> Thêm vào giỏ
           </button>
 
-            <button type="button" class="btn buy-now-btn">
-                Mua ngay
-            </button>
+          <button type="button" class="btn buy-now-btn">
+              Mua ngay
+          </button>
       </div>
-        <!-- form ẩn gửi vào place_order -->
-        <form id="buyNowForm" method="POST" action="place_order.php" style="display:none;">
-            <input type="hidden" name="full_name" value="<?= $_SESSION['user']['name'] ?? '' ?>">
-            <input type="hidden" name="phone" value="<?= $_SESSION['user']['phone'] ?? '' ?>">
-            <input type="hidden" name="address" value="<?= $_SESSION['user']['address'] ?? '' ?>">
-            <input type="hidden" name="payment_method" value="cod">
-            <input type="hidden" name="note" value="">
-            <input type="hidden" name="product_id" value="<?= $product['product_id'] ?>">
-            <input type="hidden" name="quantity" id="buyNowQty" value="1">
-        </form>
+
+      <form id="buyNowForm" method="POST" action="place_order.php" style="display:none;">
+          <input type="hidden" name="full_name" value="<?= $_SESSION['user']['name'] ?? '' ?>">
+          <input type="hidden" name="phone" value="<?= $_SESSION['user']['phone'] ?? '' ?>">
+          <input type="hidden" name="address" value="<?= $_SESSION['user']['address'] ?? '' ?>">
+          <input type="hidden" name="payment_method" value="cod">
+          <input type="hidden" name="note" value="">
+          <input type="hidden" name="product_id" value="<?= $product['product_id'] ?>">
+          <input type="hidden" name="quantity" id="buyNowQty" value="1">
+      </form>
     </div>
 </section>
 
-<!-- SẢN PHẨM LIÊN QUAN -->
+<!-- ============================ -->
+<!--     SẢN PHẨM LIÊN QUAN       -->
+<!-- ============================ -->
 <section class="related">
     <h3>Sản phẩm liên quan</h3>
 
@@ -163,7 +224,9 @@ if (!$product) {
     </div>
 </section>
 
-<!-- SẢN PHẨM GỢI Ý CHO BẠN -->
+<!-- ============================ -->
+<!--       GỢI Ý SẢN PHẨM        -->
+<!-- ============================ -->
 <section class="recommend">
     <h3>Sản phẩm gợi ý cho bạn</h3>
 
@@ -184,28 +247,48 @@ if (!$product) {
     </div>
 </section>
 
+<!-- ============================ -->
+<!--     ĐÁNH GIÁ KHÁCH HÀNG      -->
+<!-- ============================ -->
+<section class="product-reviews">
+    <h3>Đánh giá của khách hàng</h3>
+
+    <?php if ($totalReviews == 0): ?>
+        <p class="no-review">Chưa có đánh giá nào cho sản phẩm này.</p>
+    <?php else: ?>
+
+        <?php while ($rv = $reviews->fetch_assoc()): ?>
+            <div class="review-item">
+
+                <div class="review-user">
+                    <i class="fa-solid fa-user-circle"></i>
+                    <strong><?= $rv['username'] ?></strong>
+                </div>
+
+                <div class="review-stars">
+                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                        <?php if ($i <= $rv['rating']): ?>
+                            <i class="fa-solid fa-star" style="color:#ffca28;"></i>
+                        <?php else: ?>
+                            <i class="fa-regular fa-star" style="color:#ccc;"></i>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+                </div>
+
+                <p class="review-content"><?= nl2br($rv['feedback_content']) ?></p>
+            </div>
+        <?php endwhile; ?>
+
+    <?php endif; ?>
+</section>
+
 <!-- FOOTER -->
 <?php include "components/footer.php"; ?>
 
-<!-- POPUP XÁC NHẬN -->
-<div id="confirm-popup" class="popup">
-    <div class="popup-content">
-        <p id="confirm-text"></p>
-        <div class="popup-buttons">
-            <button id="confirm-yes" class="popup-btn yes">Xác nhận</button>
-            <button id="confirm-no" class="popup-btn no">Hủy</button>
-        </div>
-    </div>
-</div>
 
-<!-- POPUP THÀNH CÔNG -->
-<div id="success-popup" class="popup">
-    <div class="popup-content">
-        <p>Đã thêm vào giỏ hàng thành công! 🎉</p>
-        <button id="success-ok" class="popup-btn yes">OK</button>
-    </div>
-</div>
-
+<!-- ============================ -->
+<!--     SCRIPT XỬ LÝ GIỎ HÀNG    -->
+<!-- ============================ -->
 <script>
     const addBtn = document.querySelector(".add-to-cart-btn");
     const quantityInput = document.querySelector(".quantity input");
@@ -215,13 +298,14 @@ if (!$product) {
 
     const confirmPopup = document.getElementById("confirm-popup");
     const confirmText = document.getElementById("confirm-text");
+    const successPopup = document.getElementById("success-popup");
+
     const confirmYes = document.getElementById("confirm-yes");
     const confirmNo = document.getElementById("confirm-no");
-
-    const successPopup = document.getElementById("success-popup");
     const successOk = document.getElementById("success-ok");
 
     const isLoggedIn = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
+
 
     // ================================
     // 1️⃣ Nếu chưa đăng nhập → chuyển login
@@ -229,32 +313,11 @@ if (!$product) {
     addBtn.addEventListener("click", () => {
         const quantity = quantityInput.value;
         confirmText.innerHTML =
-            `Bạn có chắc muốn thêm <b>${productName}</b> (với số lượng :${quantity}) vào giỏ hàng không?`;
+            `Bạn có chắc muốn thêm <b>${productName}</b> (số lượng: ${quantity}) vào giỏ hàng không?`;
 
         confirmPopup.style.display = "flex";
     });
 
-    // ================================
-    // 2) Nút mua ngay: thêm vào giỏ rồi sang giỏ hàng
-    // ================================
-    document.querySelector(".buy-now-btn").addEventListener("click", (e) => {
-        e.preventDefault();
-        if (!isLoggedIn) {
-            window.location.href = "login.php?redirect=product_details.php?id=<?= $product['product_id'] ?>";
-            return;
-        }
-
-        const quantity = quantityInput.value || 1;
-        fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
-            .then(response => response.text())
-            .then(() => {
-                window.location.href = "cart.php";
-            });
-    });
-
-    // ================================
-    // 3️⃣ Xử lý popup thêm giỏ
-    // ================================
     confirmNo.addEventListener("click", () => {
         confirmPopup.style.display = "none";
     });
@@ -266,13 +329,29 @@ if (!$product) {
 
         fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
             .then(response => response.text())
-            .then(data => {
+            .then(() => {
                 successPopup.style.display = "flex";
             });
     });
 
     successOk.addEventListener("click", () => {
         successPopup.style.display = "none";
+    });
+
+
+    // ================================
+    // 2️⃣ Mua ngay
+    // ================================
+    document.querySelector(".buy-now-btn").addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!isLoggedIn) {
+            window.location.href = "login.php?redirect=product_details.php?id=<?= $product['product_id'] ?>";
+            return;
+        }
+
+        const quantity = quantityInput.value;
+        fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
+            .then(() => window.location.href = "cart.php");
     });
 </script>
 
