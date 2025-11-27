@@ -50,7 +50,7 @@ if (isset($_POST['edit'])) {
     $stmt = $conn->prepare("UPDATE products 
                             SET product_name=?, price=?, stock=?, category_id=?, updated_at=NOW() 
                             WHERE product_id=?");
-    $stmt->bind_param("sdisi", $name, $price, $stock, $category_id, $id);
+    $stmt->bind_param("sdiss", $name, $price, $stock, $category_id, $id);
     $stmt->execute();
     header("Location: list.php");
     exit();
@@ -186,41 +186,82 @@ if (isset($_POST['edit'])) {
   </tbody>
 </table>
 
-<!-- FORM SỬA -->
-<div id="editForm" style="display:none; margin-top:30px; background:#fff2ec; padding:20px; border-radius:10px; width:70%;">
-  <form method="POST">
-    <h3>Sửa sản phẩm</h3>
-    <input type="hidden" name="product_id" id="edit_id">
-    <input type="text" name="product_name_edit" id="edit_name" required 
-           style="width:30%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
-    <input type="number" name="product_price_edit" id="edit_price" required 
-           style="width:15%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
-    <input type="number" name="product_stock_edit" id="edit_stock" required 
-           style="width:10%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
-    <select name="category_id_edit" id="edit_category" required
-            style="width:25%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
-      <?php
-      $cats = $conn->query("SELECT * FROM categories ORDER BY category_name ASC");
-      while ($c = $cats->fetch_assoc()) {
-          echo "<option value='{$c['category_id']}'>{$c['category_name']}</option>";
-      }
-      ?>
-    </select>
-    <button type="submit" name="edit" style="padding:8px 15px; background:#d7a78c; color:#fff; border:none; border-radius:8px;">Lưu</button>
-    <button type="button" onclick="document.getElementById('editForm').style.display='none'"
-            style="padding:8px 15px; background:#bbb; color:#fff; border:none; border-radius:8px;">Hủy</button>
-  </form>
+<!-- ======================= POPUP SỬA SẢN PHẨM ======================= -->
+<div id="editModal" 
+     style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.4); backdrop-filter:blur(2px); 
+            align-items:center; justify-content:center; z-index:9999;">
+
+    <div style="background:white; padding:25px; border-radius:12px; width:450px;
+                box-shadow:0 5px 18px rgba(0,0,0,0.2); animation:showModal .25s ease;">
+        
+        <h3 style="margin-top:0;">✏️ Sửa sản phẩm</h3>
+
+        <form method="POST">
+            <input type="hidden" name="product_id" id="edit_id">
+
+            <label>Tên sản phẩm</label>
+            <input type="text" name="product_name_edit" id="edit_name" required
+                   style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #d8c3b5; border-radius:8px;">
+
+            <label>Giá (VND)</label>
+            <input type="number" name="product_price_edit" id="edit_price" required
+                   style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #d8c3b5; border-radius:8px;">
+
+            <label>Số lượng tồn kho</label>
+            <input type="number" name="product_stock_edit" id="edit_stock" required
+                   style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #d8c3b5; border-radius:8px;">
+
+            <label>Danh mục</label>
+            <select name="category_id_edit" id="edit_category" required
+                    style="width:100%; padding:8px; margin-bottom:15px; border:1px solid #d8c3b5; border-radius:8px;">
+                <?php
+                $catsPopup = $conn->query("SELECT * FROM categories ORDER BY category_name ASC");
+                while ($c = $catsPopup->fetch_assoc()) {
+                    echo "<option value='{$c['category_id']}'>{$c['category_name']}</option>";
+                }
+                ?>
+            </select>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" onclick="closeEditForm()"
+                        style="padding:8px 15px; background:#aaa; border:none; border-radius:8px; color:white;">
+                    Hủy
+                </button>
+
+                <button type="submit" name="edit"
+                        style="padding:8px 15px; background:#d7a78c; border:none; border-radius:8px; color:white;">
+                    Lưu thay đổi
+                </button>
+            </div>
+        </form>
+
+    </div>
 </div>
+
+<!-- Hiệu ứng popup -->
+<style>
+@keyframes showModal {
+    from { transform:translateY(-20px); opacity:0; }
+    to   { transform:translateY(0); opacity:1; }
+}
+</style>
 
 <script>
 function openEditForm(id, name, price, stock, catId) {
-  document.getElementById('editForm').style.display = 'block';
-  document.getElementById('edit_id').value = id;
-  document.getElementById('edit_name').value = name;
-  document.getElementById('edit_price').value = price;
-  document.getElementById('edit_stock').value = stock;
-  document.getElementById('edit_category').value = catId;
+    document.getElementById('editModal').style.display = 'flex';
+
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_price').value = price;
+    document.getElementById('edit_stock').value = stock;
+    document.getElementById('edit_category').value = catId;
+}
+
+function closeEditForm() {
+    document.getElementById('editModal').style.display = 'none';
 }
 </script>
+
 
 <?php include '../includes/admin_footer.php'; ?>

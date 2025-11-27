@@ -50,7 +50,7 @@
 <!-- ==== BIỂU ĐỒ ==== -->
  <div style="margin-bottom: 10px;">
     <label>Chọn tháng:</label>
-    <select id="selectMonth" onchange="loadDoanhThu()">
+    <select id="selectMonth" onchange="onMonthChange()">
         <option value="1">Tháng 1</option>
         <option value="2">Tháng 2</option>
         <option value="3">Tháng 3</option>
@@ -139,7 +139,7 @@ async function loadOverview() {
 
 // ===== 2. DOANH THU 12 THÁNG =====
 let chartDoanhThu = null;
-
+let chartTyLe = null;   
 async function loadDoanhThu() {
 
     // Nếu chưa chọn → set mặc định tháng hiện tại
@@ -219,8 +219,8 @@ async function loadDoanhThu() {
 
 
 // ===== 3. TỶ LỆ ĐƠN HÀNG =====
-async function loadTyLe() {
-    const res = await fetch(`${API_BASE}/tyle`);
+async function loadTyLe(month) {
+    const res = await fetch(`${API_BASE}/tyle?month=${month}`);
     const raw = await res.json();
 
     const labels = [];
@@ -245,9 +245,18 @@ async function loadTyLe() {
 
     const total = values.reduce((a, b) => a + b, 0);
 
-    new Chart(document.getElementById("chartTyLe"), {
+    // ❗ Destroy đúng biến
+    if (chartTyLe) chartTyLe.destroy();
+
+    chartTyLe = new Chart(document.getElementById("chartTyLe"), {
         type: "pie",
-        data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors
+            }]
+        },
         plugins: [ChartDataLabels],
         options: {
             plugins: {
@@ -307,15 +316,26 @@ async function loadNguoiDung() {
     });
 }
 
+function onMonthChange() {
+    const month = document.getElementById("selectMonth").value;
+    loadDoanhThu();        // cập nhật doanh thu theo ngày
+    loadTyLe(month);       // cập nhật tỷ lệ đơn hàng theo tháng
+}
 
 
 // ==== Gọi tất cả API ====
 loadOverview();
-document.getElementById("selectMonth").value = new Date().getMonth() + 1;
+
+const currentMonth = new Date().getMonth() + 1;
+document.getElementById("selectMonth").value = currentMonth;
+
+// Load cả hai biểu đồ theo tháng hiện tại
 loadDoanhThu();
-loadTyLe();
+loadTyLe(currentMonth);
+
 loadDonHang();
 loadNguoiDung();
+
 
 </script>
 
