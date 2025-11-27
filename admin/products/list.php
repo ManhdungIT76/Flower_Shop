@@ -2,7 +2,7 @@
 include '../../include/db_connect.php';     // Kết nối database
 include '../../config.php';                  // Đọc hình ảnh từ Drive hoặc thư mục
 include '../includes/admin_header.php';      // Giao diện admin
-
+//
 // ===== XỬ LÝ THÊM SẢN PHẨM =====
 if (isset($_POST['add'])) {
     $name = trim($_POST['product_name']);
