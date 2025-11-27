@@ -241,7 +241,7 @@ def recommend_product(product_id, top_n=4):
 #  API FLASK
 # =========================================
 @app.route("/api/recommend")
-def api_recommend_item():
+def api_recommend():
     product_id = request.args.get("product_id")
 
     if not product_id:
