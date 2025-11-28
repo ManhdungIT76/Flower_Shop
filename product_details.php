@@ -18,6 +18,34 @@ $product = mysqli_fetch_assoc($result);
 $category_id = $product['category_id'];
 $current_id = $product['product_id'];
 
+// ==============================
+// LẤY ĐÁNH GIÁ SẢN PHẨM
+// ==============================
+
+// Lấy điểm trung bình + tổng số đánh giá
+$sql_avg = "SELECT AVG(rating) AS avg_rating, COUNT(*) AS total_reviews 
+            FROM feedback 
+            WHERE product_id = ?";
+$stmt_avg = $conn->prepare($sql_avg);
+$stmt_avg->bind_param("s", $id);
+$stmt_avg->execute();
+$ratingData = $stmt_avg->get_result()->fetch_assoc();
+
+$avgRating = $ratingData['avg_rating'] ? round($ratingData['avg_rating'], 1) : 0;
+$totalReviews = $ratingData['total_reviews'];
+
+// Lấy danh sách đánh giá
+$sql_reviews = "SELECT f.*, u.full_name AS username 
+                FROM feedback f
+                JOIN users u ON f.user_id = u.user_id
+                WHERE f.product_id = ?
+                ORDER BY f.feedback_id DESC";
+
+$stmt_rev = $conn->prepare($sql_reviews);
+$stmt_rev->bind_param("s", $id);
+$stmt_rev->execute();
+$reviews = $stmt_rev->get_result();
+
 // Lấy 4 sản phẩm bán chạy nhất cùng danh mục
 $related_query = "
     SELECT 
@@ -37,7 +65,7 @@ $related_query = "
 $related_result = mysqli_query($conn, $related_query);
 
 // ==============================
-// GỌI API FLASK — APRIORI RECOMMEND
+// GỌI API FLASK
 // ==============================
 $product_id = $product['product_id'];
 
@@ -103,6 +131,30 @@ if (!$product) {
       <p class="price">
         <?= number_format($product['price'], 0, ',', '.') ?> đ
       </p>
+
+    <!-- ⭐ XẾP HẠNG -->
+      <div class="product-rating">
+          <div class="stars">
+              <?php 
+                  $fullStars = floor($avgRating);
+                  $halfStar = ($avgRating - $fullStars) >= 0.5;
+              ?>
+
+              <?php for ($i = 1; $i <= 5; $i++): ?>
+                  <?php if ($i <= $fullStars): ?>
+                      <i class="fa-solid fa-star" style="color:#ffca28;"></i>
+                  <?php elseif ($halfStar && $i == $fullStars + 1): ?>
+                      <i class="fa-solid fa-star-half-stroke" style="color:#ffca28;"></i>
+                  <?php else: ?>
+                      <i class="fa-regular fa-star" style="color:#ccc;"></i>
+                  <?php endif; ?>
+              <?php endfor; ?>
+          </div>
+
+          <span class="rating-number">
+              <?= $avgRating ?> / 5 (<?= $totalReviews ?> đánh giá)
+          </span>
+      </div>
 
       <!-- ⭐ MÔ TẢ SẢN PHẨM -->
       <p>
@@ -182,6 +234,41 @@ if (!$product) {
             </div>
         <?php endforeach; ?>
     </div>
+</section>
+
+<!-- ============================ -->
+<!--     ĐÁNH GIÁ KHÁCH HÀNG      -->
+<!-- ============================ -->
+<section class="product-reviews">
+    <h3>Đánh giá của khách hàng</h3>
+
+    <?php if ($totalReviews == 0): ?>
+        <p class="no-review">Chưa có đánh giá nào cho sản phẩm này.</p>
+    <?php else: ?>
+
+        <?php while ($rv = $reviews->fetch_assoc()): ?>
+            <div class="review-item">
+
+                <div class="review-user">
+                    <i class="fa-solid fa-user-circle"></i>
+                    <strong><?= $rv['username'] ?></strong>
+                </div>
+
+                <div class="review-stars">
+                    <?php for ($i = 1; $i <= 5; $i++): ?>
+                        <?php if ($i <= $rv['rating']): ?>
+                            <i class="fa-solid fa-star" style="color:#ffca28;"></i>
+                        <?php else: ?>
+                            <i class="fa-regular fa-star" style="color:#ccc;"></i>
+                        <?php endif; ?>
+                    <?php endfor; ?>
+                </div>
+
+                <p class="review-content"><?= nl2br($rv['feedback_content']) ?></p>
+            </div>
+        <?php endwhile; ?>
+
+    <?php endif; ?>
 </section>
 
 <!-- FOOTER -->

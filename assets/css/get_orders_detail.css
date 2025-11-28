@@ -106,3 +106,27 @@
     from { opacity: 0; transform: translateY(-8px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+/* ===========================
+   SCROLL CHO DANH SÁCH SẢN PHẨM
+============================ */
+
+/* Tạo khung cố định và cuộn */
+.order-left {
+    max-height: 350px;       /* Giới hạn chiều cao cột trái */
+    overflow-y: auto;        /* CHO CUỘN TẠI ĐÂY */
+    padding-right: 10px;     /* tạo không gian cho scrollbar */
+}
+
+/* Scrollbar đẹp */
+.order-left::-webkit-scrollbar {
+    width: 6px;
+}
+
+.order-left::-webkit-scrollbar-thumb {
+    background: #d8b6a4;
+    border-radius: 10px;
+}
+
+.order-left::-webkit-scrollbar-track {
+    background: #f2e7df;
+}
