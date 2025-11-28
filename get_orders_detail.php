@@ -34,9 +34,14 @@ $items = $stmt_items->get_result();
 
 $order_date = date("d/m/Y H:i", strtotime($order["order_date"]));
 $ship_date  = date("d/m/Y H:i", strtotime($order["ship_date"]));
+
+$paymentStatus = $order['payment_status'];
+if (!empty($order['status']) && $order['status'] === 'Đã giao') {
+    $paymentStatus = 'Đã thanh toán';
+}
 ?>
 
-<link rel="stylesheet" href="/XAYDUNGHTTT_WEBBANHOA/assets/css/get_orders_detail.css">
+<link rel="stylesheet" href="/Flower_Shop/assets/css/get_orders_detail.css">
 
 <div class="order-detail-wrapper">
 
@@ -84,7 +89,7 @@ $ship_date  = date("d/m/Y H:i", strtotime($order["ship_date"]));
         </p>
 
         <p><span class="label">Thanh toán:</span>
-            <?= $order['payment_method'] ?> (<?= $order['payment_status'] ?>)
+            <?= $order['payment_method'] ?> (<?= $paymentStatus ?>)
         </p>
 
         <p><span class="label">Giao hàng:</span> <?= $order['delivery_method'] ?></p>

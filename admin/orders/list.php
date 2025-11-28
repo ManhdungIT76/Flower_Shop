@@ -20,9 +20,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     if ($orderId !== '' && $newStatus !== '') {
     // Nếu đã giao → lưu thời gian giao, nếu chưa giao → giữ ship_date = NULL
     if ($newStatus === 'Đã giao') {
-        $stmt = $conn->prepare("UPDATE orders SET status = ?, ship_date = NOW() WHERE order_id = ?");
+    $stmt = $conn->prepare("
+        UPDATE orders 
+        SET status = ?, ship_date = NOW(), payment_status = 'Đã thanh toán'
+        WHERE order_id = ?
+    ");
     } else {
-        $stmt = $conn->prepare("UPDATE orders SET status = ?, ship_date = NULL WHERE order_id = ?");
+        $stmt = $conn->prepare("
+            UPDATE orders 
+            SET status = ?, ship_date = NULL, payment_status = 'Chưa thanh toán'
+            WHERE order_id = ?
+        ");
     }
     $stmt->bind_param("ss", $newStatus, $orderId);
     $stmt->execute();
