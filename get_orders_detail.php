@@ -32,7 +32,38 @@ $stmt_items->execute();
 $items = $stmt_items->get_result();
 
 $order_date = date("d/m/Y H:i", strtotime($order["order_date"]));
-$ship_date  = date("d/m/Y H:i", strtotime($order["ship_date"]));
+
+/* ============================
+   XỬ LÝ NGÀY GIAO
+   ============================ */
+
+function getEstimatedDeliveryDate($method_id, $order_date_raw) {
+    $order_time = strtotime($order_date_raw);
+
+    switch ($method_id) {
+        case "GH001": // Giao nhanh
+            return date("d/m/Y H:i", strtotime("+2 hours", $order_time));
+
+        case "GH002": // Giao tiêu chuẩn
+        case "GH004": // Giao trong ngày
+            return date("d/m/Y", $order_time) . " (Trong ngày)";
+
+        case "GH003": // Giao theo lịch hẹn
+            return "Theo lịch hẹn của khách";
+
+        default:
+            return "Đang xử lý";
+    }
+}
+
+// Nếu ship_date = NULL → Ngày dự kiến
+if (empty($order["ship_date"])) {
+    $ship_date = getEstimatedDeliveryDate($order["delivery_method_id"], $order["order_date"]);
+} else {
+    $ship_date = date("d/m/Y H:i", strtotime($order["ship_date"]));
+}
+
+/* ============================ */
 
 $paymentStatus = $order['payment_status'];
 if (!empty($order['status']) && $order['status'] === 'Đã giao') {

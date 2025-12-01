@@ -259,6 +259,11 @@ $userInfo = $u->get_result()->fetch_assoc();
 <div id="qrBox" style="display:none;">
 <iframe id="qrFrame" style="width:100%;height:380px;border:none;border-radius:10px"></iframe>
 </div>
+<button type="button" id="btnCancelQR" class="btn-submit"
+        style="display:none; background:#b8b8b8;"
+        onclick="cancelQR()">
+    Hủy thanh toán
+</button>
 
 <button class="btn-submit" type="submit" name="checkout_cod" id="btnCOD">Xác nhận COD</button>
 
@@ -312,7 +317,8 @@ function openPopup() {
     updateDeliveryFee();
 }
 
-function closePopup() { overlay.style.display = "none"; }
+function closePopup() { overlay.style.display = "none";
+    if (checkInterval) clearInterval(checkInterval); }
 
 function selectPayment(type) {
     document.getElementById("codCard").classList.remove("active");
@@ -350,7 +356,33 @@ function updateDeliveryFee() {
         "<strong>" + total.toLocaleString() + " đ</strong>";
 }
 
+/* =============================
+   NÚT HỦY THANH TOÁN
+============================= */
+let currentOrderId = null;
+async function cancelQR() {
 
+    if (currentOrderId) {
+    await fetch("pages/cancel_order.php", {
+        method: "POST",
+        body: new URLSearchParams({ order_id: currentOrderId })
+    });
+}
+currentOrderId = null;
+if (checkInterval) clearInterval(checkInterval);
+document.getElementById("qrBox").style.display = "none";
+document.getElementById("qrFrame").src = "";
+document.getElementById("btnQR").disabled = false;
+document.getElementById("btnCancelQR").style.display = "none";
+closePopup();
+location.reload();
+}
+
+
+
+/* =============================
+   SAU KHI QR ĐÃ TẠO
+============================= */
 async function submitQR() {
 
     const form = document.getElementById('checkoutForm');
@@ -359,28 +391,76 @@ async function submitQR() {
     formData.set('items', document.getElementById('orderItems').value);
     formData.set('delivery_fee', document.getElementById('deliveryFee').value);
     formData.set('delivery_method', document.getElementById('deliveryMethod').value);
-    formData.set('note', form.querySelector('[name="note"]').value);
 
     const res = await fetch('payment/create_qr.php', { method: 'POST', body: formData });
-    const text = await res.text();
-    console.log(text);
+    const txt = await res.text();
+    console.log(txt);
 
     let data;
-    try {
-        data = JSON.parse(text);
-    } catch (e) {
-        alert("Lỗi phản hồi từ server!");
-        return;
+    try { data = JSON.parse(txt); } catch { return alert("Lỗi server!"); }
+
+    if (data.status === "ok") {
+        currentOrderId = data.order_id;
+        document.getElementById("qrFrame").src =
+        "payment/create_qr.php?order_id=" + data.order_id;
+
+        document.getElementById("qrBox").style.display = "block";
+        document.getElementById("btnQR").disabled = true;
+
+        document.getElementById("btnCancelQR").style.display = "block"; // <-- THÊM
+
+        startCheckPayment(data.order_id);
+    return;
     }
 
-    if (data.status === 'ok') {
-        document.getElementById('qrFrame').src = 'payment/create_qr.php?order_id=' + data.order_id;
-        document.getElementById('qrBox').style.display = 'block';
-        document.getElementById('btnQR').disabled = true;
-    } 
-    else if (data.status === 'not_login') alert('Bạn cần đăng nhập.');
-    else if (data.status === 'no_items') alert('Giỏ hàng trống.');
-    else alert('Không tạo được QR.');
+
+    if (data.status === "already_created") {
+        currentOrderId = data.order_id;
+        startCheckPayment(data.order_id);
+        document.getElementById("qrFrame").src =
+        "payment/create_qr.php?order_id=" + data.order_id;
+
+        document.getElementById("qrBox").style.display = "block";
+        document.getElementById("btnQR").disabled = true;
+
+        document.getElementById("btnCancelQR").style.display = "block";  // <-- THÊM
+
+    return;
+    }
+
+
+    alert("Không tạo được QR!");
+}
+
+/* =============================================
+   KIỂM TRA THANH TOÁN TỰ ĐỘNG SAU KHI TẠO QR
+============================================= */
+
+let checkInterval = null;
+
+function startCheckPayment(orderId) {
+    if (checkInterval) clearInterval(checkInterval);
+
+    checkInterval = setInterval(() => {
+        fetch("payment/check_payment.php?order_id=" + orderId)
+            .then(res => res.json())
+            .then(data => {
+
+                if (data && data.payment_status === "Đã thanh toán") {
+
+                    clearInterval(checkInterval);
+
+                    // 1. Ẩn QR
+                    document.getElementById("qrBox").style.display = "none";
+
+                    // 2. Thông báo
+                    alert("Thanh toán thành công! Đơn hàng đã được xác nhận.");
+
+                    // 3. Chuyển trang
+                    window.location.href = "orders.php";
+                }
+            });
+    }, 3000); // kiểm tra mỗi 3 giây
 }
 </script>
 

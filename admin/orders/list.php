@@ -14,30 +14,37 @@ $statusOptions = [
 
 /* Xử lý cập nhật trạng thái */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+
     $orderId   = $_POST['order_id'] ?? '';
     $newStatus = $_POST['new_status'] ?? '';
 
     if ($orderId !== '' && $newStatus !== '') {
-    // Nếu đã giao → lưu thời gian giao, nếu chưa giao → giữ ship_date = NULL
-    if ($newStatus === 'Đã giao') {
-    $stmt = $conn->prepare("
-        UPDATE orders 
-        SET status = ?, ship_date = NOW(), payment_status = 'Đã thanh toán'
-        WHERE order_id = ?
-    ");
-    } else {
-        $stmt = $conn->prepare("
-            UPDATE orders 
-            SET status = ?, ship_date = NULL, payment_status = 'Chưa thanh toán'
-            WHERE order_id = ?
-        ");
+
+        // Nếu trạng thái mới là "Đã giao" → ghi ngày nhận
+        if ($newStatus === 'Đã giao') {
+            $stmt = $conn->prepare("
+                UPDATE orders 
+                SET status = ?, ship_date = NOW(), payment_status = 'Đã thanh toán'
+                WHERE order_id = ?
+            ");
+        } 
+        // Nếu đổi từ 'Đã giao' sang trạng thái khác → reset ngày nhận
+        else {
+            $stmt = $conn->prepare("
+                UPDATE orders 
+                SET status = ?, ship_date = NULL, payment_status = 'Chưa thanh toán'
+                WHERE order_id = ?
+            ");
+        }
+
+        $stmt->bind_param("ss", $newStatus, $orderId);
+        $stmt->execute();
     }
-    $stmt->bind_param("ss", $newStatus, $orderId);
-    $stmt->execute();
-    }
+
     header("Location: list.php");
     exit;
 }
+
 
 /* Tìm kiếm & lọc */
 $search        = isset($_GET['search']) ? trim($_GET['search']) : '';

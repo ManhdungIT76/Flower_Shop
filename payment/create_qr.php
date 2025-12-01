@@ -3,13 +3,13 @@ session_start();
 include '../include/db_connect.php';
 
 /* ===========================================================
-   1) HIỂN THỊ QR THANH TOÁN
+   1) HIỂN THỊ QR KHI CÓ order_id
 =========================================================== */
 if (isset($_GET['order_id'])) {
 
     $order_id = $_GET['order_id'];
 
-    // Lấy đơn hàng
+    // Lấy đơn
     $stmt = $conn->prepare("
         SELECT user_id, total_amount 
         FROM orders 
@@ -19,20 +19,26 @@ if (isset($_GET['order_id'])) {
     $stmt->execute();
     $order = $stmt->get_result()->fetch_assoc();
 
-    // Kiểm tra đơn hàng hợp lệ
+    // Check quyền sở hữu đơn
     if (!$order || $order['user_id'] != $_SESSION['user']['id']) {
-        die("Không tìm thấy đơn hàng hoặc không thuộc quyền sở hữu!");
+        die("Không tìm thấy đơn hoặc không thuộc quyền sở hữu!");
     }
 
-    // GIỮ amount = 2000 để test SEPay
-    $amount = 2000;
+    /* ============================================================
+       AMOUNT — 2 CHẾ ĐỘ (bạn chọn bằng comment)
+    ============================================================ */
+
+    // (1) Chế độ DEMO SEPAY – luôn 2000đ
+     $amount = 2000;
+
+    // (2) Chế độ thật
+    //$amount = (int)$order['total_amount'];
 
     $bank = "MBBank";
     $acc  = "0363074451";
     $desc = urlencode($order_id);
 
     $qr = "https://qr.sepay.vn/img?bank=$bank&acc=$acc&template=compact&amount=$amount&des=$desc";
-
     ?>
     <!DOCTYPE html>
     <html>
@@ -75,10 +81,28 @@ if (isset($_POST['create_qr'])) {
     $delivery_method_id = $_POST['delivery_method'];
     $fee = (float)$_POST['delivery_fee'];
 
+    // Kiểm tra xem đã tạo đơn QR chưa
+    $check = $conn->query("
+        SELECT order_id 
+        FROM orders
+        WHERE user_id='$user_id' 
+          AND payment_status='Chưa thanh toán'
+          AND payment_method_id='TT002'
+        ORDER BY order_date DESC
+        LIMIT 1
+    ");
 
-    /* ------------------------------------------------------
-       2.1 Tính tổng tiền đúng
-    --------------------------------------------------------- */
+    if ($check->num_rows > 0) {
+        $old_order = $check->fetch_assoc()['order_id'];
+
+        echo json_encode([
+            "status" => "already_created",
+            "order_id" => $old_order
+        ]);
+        exit;
+    }
+
+    /* ------------------ Tính tổng -------------------------- */
     $total = 0;
     foreach ($items as $i) {
         $total += ($i['price'] * $i['qty']);
@@ -86,91 +110,56 @@ if (isset($_POST['create_qr'])) {
     $total += $fee;
 
 
-    /* ------------------------------------------------------
-       2.2 Tạo đơn hàng
-    --------------------------------------------------------- */
+    /* ------------------ Tạo đơn ---------------------------- */
+    $conn->begin_transaction();
+try {
     $stmt = $conn->prepare("
         INSERT INTO orders
         (user_id, total_amount, payment_method_id, delivery_method_id,
          payment_status, status, note)
         VALUES (?, ?, ?, ?, 'Chưa thanh toán', 'Chờ xác nhận', ?)
     ");
-
-    $stmt->bind_param("sdsss",
-        $user_id,
-        $total,
-        $payment_method_id,
-        $delivery_method_id,
-        $note
-    );
-
-    if (!$stmt->execute()) {
-        echo json_encode(["status" => "error", "msg" => $stmt->error]);
-        exit;
-    }
-
-    // order_id không thể lấy bằng insert_id vì dùng varchar + trigger
-    $result = $conn->query("
+    $stmt->bind_param("sdsss", $user_id, $total, $payment_method_id, $delivery_method_id, $note);
+    $stmt->execute();
+    // Lấy mã đơn trigger tạo
+    $getID = $conn->query("
         SELECT order_id 
-        FROM orders 
-        WHERE user_id='$user_id' 
-        ORDER BY order_date DESC 
+        FROM orders
+        WHERE user_id = '$user_id'
+        ORDER BY order_date DESC
         LIMIT 1
     ");
-    $order_id = $result->fetch_assoc()['order_id'];
+    $order_id = $getID->fetch_assoc()['order_id'];
 
-    if (!$order_id) {
-        echo json_encode(["status" => "error", "msg" => "Không lấy được mã đơn hàng!"]);
-        exit;
-    }
-
-
-    /* ------------------------------------------------------
-       2.3 Insert chi tiết đơn hàng
-    --------------------------------------------------------- */
     foreach ($items as $i) {
-
-        $product_id = $i['id'];
-        $qty        = (int)$i['qty'];
-
-        // Lấy giá từ DB (đảm bảo chính xác)
+        // lấy giá từ DB
         $p = $conn->prepare("SELECT price FROM products WHERE product_id=? LIMIT 1");
-        $p->bind_param("s", $product_id);
+        $p->bind_param("s", $i['id']);
         $p->execute();
         $db_product = $p->get_result()->fetch_assoc();
+        if (!$db_product) throw new Exception("product_not_found");
 
-        if (!$db_product) continue;
-
+        $qty = (int)$i['qty'];
         $unit_price = (float)$db_product['price'];
 
-        // Insert từng dòng
-        $d = $conn->prepare("
-            INSERT INTO order_details (order_id, product_id, quantity, unit_price)
-            VALUES (?, ?, ?, ?)
-        ");
-        $d->bind_param("ssid", $order_id, $product_id, $qty, $unit_price);
+        $d = $conn->prepare("INSERT INTO order_details (order_id, product_id, quantity, unit_price) VALUES (?, ?, ?, ?)");
+        $d->bind_param("ssid", $order_id, $i['id'], $qty, $unit_price);
         $d->execute();
 
-        // Trừ kho
         $u = $conn->prepare("UPDATE products SET stock = stock - ? WHERE product_id=?");
-        $u->bind_param("is", $qty, $product_id);
+        $u->bind_param("is", $qty, $i['id']);
         $u->execute();
     }
 
-
-    /* ------------------------------------------------------
-       2.4 Trả về JSON cho JS hiển thị QR
-    --------------------------------------------------------- */
-    echo json_encode([
-        "status"   => "ok",
-        "order_id" => $order_id
-    ]);
+    $conn->commit();
+    echo json_encode(["status" => "ok", "order_id" => $order_id]);
+    exit;
+} catch (Exception $e) {
+    $conn->rollback();
+    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     exit;
 }
+}
 
-
-/* ===========================================================
-   3) REQUEST KHÔNG HỢP LỆ
-=========================================================== */
 echo json_encode(["status" => "invalid"]);
 ?>
