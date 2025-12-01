@@ -3,7 +3,7 @@ include 'include/db_connect.php';
 
 $input = json_decode(file_get_contents("php://input"), true);
 
-file_put_contents("webhook_log.txt", print_r($input, true), FILE_APPEND);
+file_put_contents("payment/webhook_log.txt", print_r($input, true), FILE_APPEND);
 
 $content = $input["content"] ?? "";
 $amount  = $input["transferAmount"] ?? 0;

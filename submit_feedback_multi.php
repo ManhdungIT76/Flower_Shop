@@ -5,20 +5,18 @@ include 'include/db_connect.php';
 header("Content-Type: application/json");
 
 // kiểm tra đăng nhập
-if (!isset($_SESSION['user'])) {
-    echo json_encode([
-        "status" => "error",
-        "message" => "Bạn chưa đăng nhập!"
-    ]);
+if (!isset($_SESSION['user'])) { 
+    echo json_encode(["status" => "error", "message" => "Bạn cần đăng nhập."]);
     exit;
 }
+
+$user_id = $_SESSION['user']['id'];
 
 // lấy dữ liệu JSON từ fetch()
 $data = json_decode(file_get_contents("php://input"), true);
 
 $order_id = $data['order_id'] ?? null;
 $reviews  = $data['reviews'] ?? null;
-$user_id  = $_SESSION['user']['id'];
 
 if (!$order_id || !$reviews || !is_array($reviews)) {
     echo json_encode([
@@ -36,6 +34,15 @@ foreach ($reviews as $rv) {
     $comment    = trim($rv['comment']);
 
     if ($rating == 0 && $comment == "") continue;
+
+    // kiểm tra sản phẩm có thuộc đơn hàng & user hay không
+    $check = $conn->prepare("
+        SELECT * FROM order_details od 
+        JOIN orders o ON od.order_id = o.order_id
+        WHERE od.product_id = ? AND od.order_id = ? AND o.user_id = ?");
+    $check->bind_param("sss", $product_id, $order_id, $user_id);
+    $check->execute();
+    if ($check->get_result()->num_rows == 0) continue;
 
     // tạo feedback_id dạng FB001
     $last = $conn->query("SELECT feedback_id FROM feedback ORDER BY feedback_id DESC LIMIT 1");
@@ -57,7 +64,7 @@ foreach ($reviews as $rv) {
     $stmt->execute();
 }
 
-// ⭐⭐⭐ THÊM ĐOẠN NÀY: cập nhật đơn hàng thành đã đánh giá
+// cập nhật đơn hàng đã đánh giá
 $update = $conn->prepare("UPDATE orders SET is_reviewed = 1 WHERE order_id = ?");
 $update->bind_param("s", $order_id);
 $update->execute();

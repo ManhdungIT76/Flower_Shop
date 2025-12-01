@@ -1,11 +1,10 @@
 <?php
 include 'include/db_connect.php';
 include 'config.php';
+session_start();
 
-if (!isset($_GET['id'])) {
-    echo "Lỗi: Không tìm thấy đơn hàng.";
-    exit;
-}
+if (!isset($_SESSION['user'])) { exit("Bạn cần đăng nhập."); }
+$user_id = $_SESSION['user']['id'];
 
 $order_id = $_GET['id'];
 
@@ -14,10 +13,10 @@ $sql = "SELECT o.*, pm.method_name AS payment_method, dm.method_name AS delivery
         FROM orders o
         LEFT JOIN payment_methods pm ON o.payment_method_id = pm.payment_method_id
         LEFT JOIN delivery_methods dm ON o.delivery_method_id = dm.delivery_method_id
-        WHERE o.order_id = ?";
+        WHERE o.order_id = ? AND o.user_id = ?";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("s", $order_id);
+$stmt->bind_param("ss", $order_id, $user_id);
 $stmt->execute();
 $order = $stmt->get_result()->fetch_assoc();
 

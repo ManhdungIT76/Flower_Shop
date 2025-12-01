@@ -11,9 +11,12 @@ $isLoggedIn = isset($_SESSION['user']);
 $id = $_GET['id'];
 
 // LẤY THÔNG TIN SẢN PHẨM
-$sql = "SELECT * FROM products WHERE product_id = '$id'";
-$result = mysqli_query($conn, $sql);
-$product = mysqli_fetch_assoc($result);
+$stmt = $conn->prepare("SELECT * FROM products WHERE product_id = ?");
+$stmt->bind_param("s", $id);
+$stmt->execute();
+$product = $stmt->get_result()->fetch_assoc();
+
+if (!$product) { die("Sản phẩm không tồn tại!"); }
 
 $category_id = $product['category_id'];
 $current_id = $product['product_id'];
@@ -48,21 +51,18 @@ $reviews = $stmt_rev->get_result();
 
 // Lấy 4 sản phẩm bán chạy nhất cùng danh mục
 $related_query = "
-    SELECT 
-        p.product_id,
-        p.product_name,
-        p.price,
-        p.image_url,
-        IFNULL(SUM(od.quantity), 0) AS total_sold
+    SELECT p.product_id, p.product_name, p.price, p.image_url,
+           IFNULL(SUM(od.quantity), 0) AS total_sold
     FROM products p
     LEFT JOIN order_details od ON od.product_id = p.product_id
-    WHERE p.category_id = '$category_id' 
-      AND p.product_id != '$current_id'
+    WHERE p.category_id = ? AND p.product_id != ?
     GROUP BY p.product_id
     ORDER BY total_sold DESC
-    LIMIT 4
-";
-$related_result = mysqli_query($conn, $related_query);
+    LIMIT 4";
+$stmtRel = $conn->prepare($related_query);
+$stmtRel->bind_param("ss", $category_id, $current_id);
+$stmtRel->execute();
+$related_result = $stmtRel->get_result();
 
 // ==============================
 // GỌI API FLASK

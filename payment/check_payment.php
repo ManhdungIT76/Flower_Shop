@@ -1,6 +1,12 @@
 <?php
 session_start();
-include 'include/db_connect.php';
+include '../include/db_connect.php';
+
+if (!isset($_SESSION['user'])) {
+    http_response_code(401);
+    echo json_encode(["error" => "not_login"]);
+    exit;
+}
 
 $user_id = $_SESSION['user']['id'];
 

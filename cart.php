@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout_cod'])) {
     $address  = $_POST['address'];
     $note     = trim($_POST['note'] ?? '');
     $items    = json_decode($_POST['items'], true);
+    $fee      = (float)$_POST['delivery_fee'];
 
     if (!$items || count($items) == 0) {
         echo "<script>alert('Bạn chưa chọn sản phẩm!');</script>";
@@ -30,70 +31,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout_cod'])) {
     $delivery_method_id = $_POST['delivery_method'];
 
     $total = 0;
-    foreach ($items as $i) $total += $i['price'];
+    foreach ($items as $i) {
+        $total += ($i['price'] * $i['qty']);
+    }
+    $total += $fee;
+
+    // Ghi chú rỗng => NULL
+    $note = ($note === '') ? NULL : $note;
 
     // Tạo đơn hàng
-$stmt = $conn->prepare("
-    INSERT INTO orders 
-    (user_id, total_amount, payment_method_id, delivery_method_id, payment_status, status, note)
-    VALUES (?, ?, ?, ?, 'Chưa thanh toán', 'Chờ xác nhận', ?)
-");
-$stmt->bind_param("sdsss", 
-    $user_id, 
-    $total, 
-    $payment_method_id, 
-    $delivery_method_id, 
-    $note
-);
-
-if (!$stmt->execute()) {
-    die("Lỗi tạo đơn hàng: " . $stmt->error);
-}
-
-// LẤY order_id vừa được trigger sinh ra
-$res = $conn->query("SELECT @last_order_id AS order_id");
-$row = $res->fetch_assoc();
-$order_id = $row['order_id'];
-
-if (!$order_id) {
-    die("Không lấy được mã đơn hàng!");
-}
-
-// Insert chi tiết đơn hàng
-foreach ($items as $i) {
-
-    // Lấy product_id
-    $p = $conn->prepare("SELECT product_id FROM products WHERE product_name=? LIMIT 1");
-    $p->bind_param("s", $i['name']);
-    $p->execute();
-    $pr = $p->get_result()->fetch_assoc();
-
-    if (!$pr) {
-        die("Không tìm thấy sản phẩm: " . $i['name']);
-    }
-
-    $product_id = $pr['product_id'];
-    $qty = $i['qty'];
-    $unit_price = $i['price'] / $qty;
-
-    $d = $conn->prepare("
-        INSERT INTO order_details (order_id, product_id, quantity, unit_price)
-        VALUES (?, ?, ?, ?)
+    $stmt = $conn->prepare("
+        INSERT INTO orders 
+        (user_id, total_amount, payment_method_id, delivery_method_id, payment_status, status, note)
+        VALUES (?, ?, ?, ?, 'Chưa thanh toán', 'Chờ xác nhận', ?)
     ");
-    $d->bind_param("ssid", $order_id, $product_id, $qty, $unit_price);
 
-    if (!$d->execute()) {
-        die("LỖI INSERT order_details — Lý do: " . $d->error);
+    $stmt->bind_param("sdsss",
+        $user_id,
+        $total,
+        $payment_method_id,
+        $delivery_method_id,
+        $note
+    );
+
+    if (!$stmt->execute()) {
+        die("Lỗi tạo đơn hàng: " . $stmt->error);
     }
 
-    // Trừ kho
-    $u = $conn->prepare("UPDATE products SET stock = stock - ? WHERE product_id=?");
-    $u->bind_param("is", $qty, $product_id);
-    $u->execute();
-}
+    // Lấy order_id từ trigger
+    $getID = $conn->query("SELECT order_id FROM orders WHERE user_id='$user_id' ORDER BY order_date DESC LIMIT 1");
+    $order_id = $getID->fetch_assoc()['order_id'];
 
+    if (!$order_id) {
+        die("Không lấy được mã đơn hàng!");
+    }
 
-    // Cập nhật địa chỉ người dùng
+    // Insert chi tiết đơn hàng
+    foreach ($items as $i) {
+
+        $product_id = $i['id'];
+        $qty        = (int)$i['qty'];
+
+        // Lấy giá từ DB
+        $p = $conn->prepare("SELECT price FROM products WHERE product_id=? LIMIT 1");
+        $p->bind_param("s", $product_id);
+        $p->execute();
+        $db_pr = $p->get_result()->fetch_assoc();
+
+        if (!$db_pr) {
+            die("Không tìm thấy sản phẩm: " . $i['name']);
+        }
+
+        $unit_price = (float)$db_pr['price'];
+
+        $d = $conn->prepare("
+            INSERT INTO order_details (order_id, product_id, quantity, unit_price)
+            VALUES (?, ?, ?, ?)
+        ");
+        $d->bind_param("ssid", $order_id, $product_id, $qty, $unit_price);
+
+        if (!$d->execute()) {
+            die("Lỗi INSERT order_details — " . $d->error);
+        }
+
+        // Trừ kho
+        $u = $conn->prepare("UPDATE products SET stock = stock - ? WHERE product_id=?");
+        $u->bind_param("is", $qty, $product_id);
+        $u->execute();
+    }
+
+    // Cập nhật thông tin người dùng
     $u2 = $conn->prepare("
         UPDATE users 
         SET full_name=?, phone_number=?, shipping_address=? 
@@ -102,7 +109,7 @@ foreach ($items as $i) {
     $u2->bind_param("ssss", $fullname, $phone, $address, $user_id);
     $u2->execute();
 
-    // cập nhật lại session
+    // Cập nhật session
     $_SESSION['user']['name']    = $fullname;
     $_SESSION['user']['phone']   = $phone;
     $_SESSION['user']['address'] = $address;
@@ -112,8 +119,8 @@ foreach ($items as $i) {
     echo "<script>alert('Đặt hàng thành công!'); window.location='orders.php';</script>";
     exit;
 }
-?>
 
+?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -156,7 +163,7 @@ foreach ($_SESSION['cart'] as $item):
     $t = $item['qty'] * $item['price'];
     $grand += $t;
 ?>
-<tr>
+<tr data-product-id="<?= $item['id'] ?>">
 <td><img src="<?= getImagePath($item['image']) ?>" class="product-img"></td>
 <td><?= $item['name'] ?></td>
 <td><?= number_format($item['price']) ?> đ</td>
@@ -184,6 +191,19 @@ foreach ($_SESSION['cart'] as $item):
 
 </section>
 
+<?php
+$user_id = $_SESSION['user']['id'];
+
+$u = $conn->prepare("
+    SELECT full_name, phone_number, shipping_address
+    FROM users 
+    WHERE user_id=?
+");
+$u->bind_param("s", $user_id);
+$u->execute();
+$userInfo = $u->get_result()->fetch_assoc();
+?>
+
 
 <!-- POPUP THANH TOÁN -->
 <div class="overlay" id="overlay">
@@ -199,23 +219,23 @@ foreach ($_SESSION['cart'] as $item):
 <input type="hidden" id="deliveryFee" name="delivery_fee" value="20000">
 
 <label>Họ tên:</label>
-<input type="text" name="fullname" required value="<?= $_SESSION['user']['name'] ?? '' ?>">
+<input type="text" name="fullname" required value="<?= $userInfo['full_name'] ?>">
 
 <label>Số điện thoại:</label>
-<input type="tel" name="phone" required value="<?= $_SESSION['user']['phone'] ?? '' ?>">
+<input type="tel" name="phone" required value="<?= $userInfo['phone_number'] ?>">
 
 <label>Địa chỉ:</label>
-<textarea name="address" placeholder="Nhập địa chỉ giao hàng..." required><?= $_SESSION['user']['address'] ?? '' ?></textarea>
+<textarea name="address"><?= $userInfo['shipping_address'] ?></textarea>
 
-<label>Ghi chú cho cửa hàng:</label>
-<textarea name="note" placeholder="Ví dụ: giao giờ hành chính, thêm lời chúc..." rows="2"></textarea>
+<label>Ghi chú:</label>
+<textarea name="note" placeholder="Thêm ghi chú..." rows="2"></textarea>
 
 <h4>Phương thức giao hàng</h4>
 <select id="deliveryMethod" name="delivery_method" onchange="updateDeliveryFee()" required>
     <option value="GH001" data-fee="50000">Giao nhanh (+50.000đ)</option>
-    <option value="GH002" data-fee="20000" selected>Giao tiêu chuẩn (+20.000đ)</option>
-    <option value="GH003" data-fee="40000">Giao theo lịch hẹn (+40.000đ)</option>
-    <option value="GH004" data-fee="30000">Giao nội thành (+30.000đ)</option>
+    <option value="GH002" data-fee="20000" selected>Tiêu chuẩn (+20.000đ)</option>
+    <option value="GH003" data-fee="40000">Theo lịch (+40.000đ)</option>
+    <option value="GH004" data-fee="30000">Nội thành (+30.000đ)</option>
 </select>
 
 <p id="deliveryFeeText">Phí giao hàng: <strong>20.000 đ</strong></p>
@@ -250,6 +270,8 @@ foreach ($_SESSION['cart'] as $item):
 </div>
 
 <script>
+const overlay = document.getElementById("overlay");
+
 function openPopup() {
 
     <?php if (!isset($_SESSION['user'])): ?>
@@ -264,15 +286,22 @@ function openPopup() {
     document.querySelectorAll("#cartTable tbody tr").forEach(row => {
         let name  = row.children[1].innerText;
         let qty   = parseInt(row.querySelector(".qty-number").innerText);
-        let total = parseInt(row.children[4].innerText.replace(/\D/g,""));
+        let unit  = parseInt(row.children[2].innerText.replace(/\D/g,""));
+        let total = unit * qty;
+        let id    = row.dataset.productId;
 
-        items.push({ name, qty, price: total });
+        items.push({
+            id: id,
+            name: name,
+            qty: qty,
+            price: unit
+        });
 
         table.innerHTML += `
             <tr>
                 <td>${name}</td>
                 <td>${qty}</td>
-                <td>${row.children[4].innerText}</td>
+                <td>${total.toLocaleString()} đ</td>
             </tr>
         `;
     });
@@ -308,15 +337,50 @@ function updateDeliveryFee() {
     let items = JSON.parse(document.getElementById("orderItems").value || "[]");
 
     let subtotal = 0;
-    items.forEach(i => subtotal += i.price);
+    items.forEach(i => subtotal += i.price * i.qty);
 
     let total = subtotal + fee;
+
+    document.getElementById("deliveryFee").value = fee;
 
     document.getElementById("deliveryFeeText").innerHTML =
         "Phí giao hàng: <strong>" + fee.toLocaleString() + " đ</strong>";
 
     document.getElementById("totalPayText").innerHTML =
         "<strong>" + total.toLocaleString() + " đ</strong>";
+}
+
+
+async function submitQR() {
+
+    const form = document.getElementById('checkoutForm');
+    const formData = new FormData(form);
+    formData.append('create_qr', '1');
+    formData.set('items', document.getElementById('orderItems').value);
+    formData.set('delivery_fee', document.getElementById('deliveryFee').value);
+    formData.set('delivery_method', document.getElementById('deliveryMethod').value);
+    formData.set('note', form.querySelector('[name="note"]').value);
+
+    const res = await fetch('payment/create_qr.php', { method: 'POST', body: formData });
+    const text = await res.text();
+    console.log(text);
+
+    let data;
+    try {
+        data = JSON.parse(text);
+    } catch (e) {
+        alert("Lỗi phản hồi từ server!");
+        return;
+    }
+
+    if (data.status === 'ok') {
+        document.getElementById('qrFrame').src = 'payment/create_qr.php?order_id=' + data.order_id;
+        document.getElementById('qrBox').style.display = 'block';
+        document.getElementById('btnQR').disabled = true;
+    } 
+    else if (data.status === 'not_login') alert('Bạn cần đăng nhập.');
+    else if (data.status === 'no_items') alert('Giỏ hàng trống.');
+    else alert('Không tạo được QR.');
 }
 </script>
 

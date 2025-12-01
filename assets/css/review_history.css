@@ -66,11 +66,17 @@ body {
     color: #5a3f36;
 }
 
-/* Sao */
+/* Sao (mặc định xám) */
 .stars i {
-    color: #ffbd2b;
+    color: #ccc;
     margin-right: 3px;
 }
+
+/* Sao được đánh giá */
+.stars i.active {
+    color: #ffbd2b !important;
+}
+
 
 /* Comment */
 .comment-box {

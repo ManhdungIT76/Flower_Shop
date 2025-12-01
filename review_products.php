@@ -2,10 +2,9 @@
 include 'include/db_connect.php';
 include 'config.php';
 
-if (!isset($_GET['order_id'])) {
-    echo "<p>Lỗi: Không tìm thấy mã đơn.</p>";
-    exit;
-}
+session_start();
+if (!isset($_SESSION['user'])) { exit("Bạn cần đăng nhập."); }
+$user_id = $_SESSION['user']['id'];
 
 $order_id = $_GET['order_id'];
 

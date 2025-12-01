@@ -40,20 +40,49 @@ $best_category_result = mysqli_query($conn, $best_category_query);
 // ===============================
 // LẤY 10 SẢN PHẨM NỔI BẬT
 // ===============================
-$product_query = "
+$top_categories_query = "
     SELECT 
-        p.product_id,
-        p.product_name,
-        p.price,
-        p.image_url,
-        SUM(od.quantity) AS sold_qty
+        p.category_id,
+        SUM(od.quantity) AS total_sold
     FROM products p
     JOIN order_details od ON od.product_id = p.product_id
-    GROUP BY p.product_id
-    ORDER BY sold_qty DESC
-    LIMIT 10
+    GROUP BY p.category_id
+    ORDER BY total_sold DESC
+    LIMIT 5
 ";
-$product_result = mysqli_query($conn, $product_query);
+
+$top_categories_result = mysqli_query($conn, $top_categories_query);
+
+$top_categories = [];
+while ($row = mysqli_fetch_assoc($top_categories_result)) {
+    $top_categories[] = $row['category_id'];
+}
+
+$best_products = [];
+
+foreach ($top_categories as $cat_id) {
+
+    $query = "
+        SELECT 
+            p.product_id,
+            p.product_name,
+            p.price,
+            p.image_url,
+            SUM(od.quantity) AS sold_qty
+        FROM products p
+        JOIN order_details od ON od.product_id = p.product_id
+        WHERE p.category_id = '$cat_id'
+        GROUP BY p.product_id
+        ORDER BY sold_qty DESC
+        LIMIT 2
+    ";
+    
+    $result = mysqli_query($conn, $query);
+    
+    while ($prod = mysqli_fetch_assoc($result)) {
+        $best_products[] = $prod;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -84,23 +113,22 @@ $product_result = mysqli_query($conn, $product_query);
 
     <div class="categories">
       <?php while ($bc = mysqli_fetch_assoc($best_category_result)) : ?>
-        <div class="category">
-            <img src="<?= getImagePath($bc['best_image']) ?>" 
-                 alt="<?= $bc['category_name'] ?>" />
-
+        <a href="products.php?category=<?= $bc['category_id'] ?>" class="category">
+          <img src="<?= getImagePath($bc['best_image']) ?>" 
+            alt="<?= $bc['category_name'] ?>" />
             <h3><?= $bc['category_name'] ?></h3>
-        </div>
+        </a>
+
       <?php endwhile; ?>
     </div>
   </section>
 
   <!-- SẢN PHẨM NỔI BẬT -->
   <section>
-    <h2 class="section-title">Sản phẩm bán chạy</h2>
+  <h2 class="section-title">Sản phẩm bán chạy</h2>
 
-    <div class="products">
-
-      <?php while ($row = mysqli_fetch_assoc($product_result)) : ?>
+  <div class="products">
+    <?php foreach ($best_products as $row): ?>
       <div class="product">
 
         <img src="<?= getImagePath($row['image_url']) ?>"  
@@ -110,23 +138,15 @@ $product_result = mysqli_query($conn, $product_query);
 
         <p><?= number_format($row['price'], 0, ',', '.') ?> đ</p>
 
-        <?php if (isset($_SESSION['user'])): ?>
-        <?php endif; ?>
-
-        <!-- NÚT XEM CHI TIẾT -->
         <a href="product_details.php?id=<?= $row['product_id'] ?>" class="btn">
             Xem chi tiết
         </a>
 
       </div>
-      <?php endwhile; ?>
+    <?php endforeach; ?>
+  </div>
 
-    </div>
-
-    <div class="view-more">
-      <a href="products.php">Xem thêm &nbsp;<i class="fa-solid fa-arrow-right"></i></a>
-    </div>
-  </section>
+</section>
 
   <!-- FOOTER -->
   <?php include 'components/footer.php'; ?>

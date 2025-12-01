@@ -14,10 +14,11 @@ $user_id = $_SESSION['user']['id'];
 
 // LẤY TẤT CẢ ĐÁNH GIÁ CỦA USER
 $sql = "SELECT fb.*, p.product_name, p.image_url
-        FROM feedback fb
-        JOIN products p ON fb.product_id = p.product_id
-        WHERE fb.user_id = ?
-        ORDER BY fb.feedback_id DESC";
+FROM feedback fb
+JOIN products p ON fb.product_id = p.product_id
+WHERE fb.user_id = ?
+ORDER BY fb.feedback_id DESC
+";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("s", $user_id);

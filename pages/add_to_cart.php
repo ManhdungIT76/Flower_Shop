@@ -14,9 +14,10 @@ $qty = isset($_GET['quantity']) ? intval($_GET['quantity']) : 1;
 if ($qty < 1) $qty = 1;
 
 // Lấy thông tin sản phẩm từ DB
-$sql = "SELECT * FROM products WHERE product_id = '$product_id'";
-$result = mysqli_query($conn, $sql);
-$product = mysqli_fetch_assoc($result);
+$p = $conn->prepare("SELECT * FROM products WHERE product_id = ?");
+$p->bind_param("s", $product_id);
+$p->execute();
+$product = $p->get_result()->fetch_assoc();
 
 if (!$product) {
     echo "error: product not found";
