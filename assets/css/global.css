@@ -325,6 +325,34 @@ header {
 }
 
 
+/* Floating chat button (global) */
+.chat-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 80px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #0084ff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 24px rgba(0, 132, 255, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  z-index: 1500;
+}
+
+.chat-fab:hover {
+  background: #006fd1;
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(0, 111, 209, 0.4);
+}
+
+.chat-fab i {
+  font-size: 26px;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
   header {

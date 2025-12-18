@@ -152,10 +152,40 @@ if (isset($_POST['edit'])) {
   </thead>
   <tbody>
   <?php
-  $sql = "SELECT p.*, c.category_name FROM products p 
-          LEFT JOIN categories c ON p.category_id = c.category_id 
-          ORDER BY p.created_at DESC";
-  $result = $conn->query($sql);
+  $sql = "SELECT p.*, c.category_name 
+        FROM products p 
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        WHERE 1";
+
+// Tìm theo tên
+if (!empty($_GET['search'])) {
+    $search = $conn->real_escape_string($_GET['search']);
+    $sql .= " AND p.product_name LIKE '%$search%'";
+}
+
+// Lọc danh mục
+if (!empty($_GET['filter_category'])) {
+    $cat = $conn->real_escape_string($_GET['filter_category']);
+    $sql .= " AND p.category_id = '$cat'";
+}
+
+// Lọc trạng thái tồn kho
+if (!empty($_GET['filter_status'])) {
+    $status = $_GET['filter_status'];
+
+    if ($status == "1") {
+        $sql .= " AND p.stock > 10";           // Còn hàng
+    } elseif ($status == "2") {
+        $sql .= " AND p.stock BETWEEN 1 AND 10"; // Sắp hết
+    } elseif ($status == "3") {
+        $sql .= " AND p.stock = 0";            // Hết hàng
+    }
+}
+
+$sql .= " ORDER BY p.created_at DESC";
+
+$result = $conn->query($sql);
+
   if ($result && $result->num_rows > 0) {
       while ($row = $result->fetch_assoc()) {
           $statusText = $row['stock'] <= 0 ? "Hết hàng" : ($row['stock'] <= 10 ? "Sắp hết" : "Còn hàng");

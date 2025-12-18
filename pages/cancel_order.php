@@ -26,7 +26,7 @@ $stmt->execute();
 $found = $stmt->get_result()->fetch_assoc();
 if (!$found) { echo "not_found_or_paid"; exit; }
 
-// Hoàn kho
+// Hoàn kho (giữ nguyên đoạn hoàn kho hiện có)
 $items = $conn->prepare("SELECT product_id, quantity FROM order_details WHERE order_id=?");
 $items->bind_param("s", $order_id);
 $items->execute();
@@ -38,13 +38,18 @@ while ($row = $res->fetch_assoc()) {
 }
 
 // Xóa chi tiết và set trạng thái
-$delDetails = $conn->prepare("DELETE FROM order_details WHERE order_id=?");
-$delDetails->bind_param("s", $order_id);
-$delDetails->execute();
+// $delDetails = $conn->prepare("DELETE FROM order_details WHERE order_id=?");
+// $delDetails->bind_param("s", $order_id);
+// $delDetails->execute();
 
-$upd = $conn->prepare("UPDATE orders SET status='Đã hủy' WHERE order_id=?");
+// Cập nhật trạng thái đơn và trạng thái thanh toán
+$upd = $conn->prepare("
+    UPDATE orders
+    SET status='Đã hủy', payment_status='Chưa thanh toán'
+    WHERE order_id=?
+");
 $upd->bind_param("s", $order_id);
 $upd->execute();
 
-unset($_SESSION['cart']); // tránh giữ giỏ cũ
+// Nếu muốn giữ giỏ hàng, hãy xóa dòng unset($_SESSION['cart']);
 echo "ok";

@@ -313,3 +313,56 @@ a {
   background: linear-gradient(135deg, #ae7865, #9b6553);
   transform: translateY(-2px);
 }
+
+/* CUSTOMER REVIEWS */
+.product-reviews {
+  padding: 50px 80px 60px;
+  background: #fff7f0;
+  border-top: 1px solid #f1dcd0;
+  color: #4b3f36;
+}
+
+.product-reviews h3 {
+  font-size: 22px;
+  margin-bottom: 22px;
+  text-align: left;
+}
+
+.product-reviews .no-review {
+  color: #7b6d63;
+  font-style: italic;
+}
+
+.review-item {
+  background: #fff;
+  border: 1px solid #f1dcd0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+}
+
+.review-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #4b3f36;
+}
+
+.review-user i {
+  color: #d8a691;
+  font-size: 22px;
+}
+
+.review-content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #5c4c43;
+}
+
+@media (max-width: 768px) {
+  .product-reviews {
+    padding: 30px 20px 40px;
+  }
+}

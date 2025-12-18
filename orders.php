@@ -54,7 +54,7 @@ $orders = $stmt->get_result();
                 $statusClass = "status-processing";
                 if ($row["status"] == "Đã giao") $statusClass = "status-delivered";
                 elseif ($row["status"] == "Đã hủy") $statusClass = "status-cancelled";
-
+                $canCancel = ($row["status"] == "Chờ xác nhận");
                 // LẤY ẢNH SẢN PHẨM ĐẦU TIÊN
                 $sqlImg = "SELECT p.image_url 
                            FROM order_details od
@@ -95,7 +95,12 @@ $orders = $stmt->get_result();
                     <button class="btn" onclick="openPopup('<?= $row['order_id'] ?>')">
                         Xem chi tiết
                     </button>
-
+                    <?php if ($canCancel): ?>
+                        <button class="btn" style="background:#f05a5a"
+                                onclick="cancelOrder('<?= $row['order_id'] ?>')">
+                            Hủy đơn
+                        </button>
+                    <?php endif; ?>
                     <?php if ($canReview): ?>
                         <button class="btn-received"
                                 data-order-id="<?= $row['order_id'] ?>"
@@ -153,6 +158,25 @@ function openPopup(orderId) {
         .then(html => content.innerHTML = html)
         .catch(() => content.innerHTML = "Lỗi tải dữ liệu.");
 }
+function cancelOrder(orderId) {
+    if (!confirm("Bạn chắc chắn hủy đơn này?")) return;
+
+    fetch("pages/cancel_order_user.php", {
+        method: "POST",
+        body: new URLSearchParams({ order_id: orderId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "ok") {
+            alert("Đã hủy đơn và hoàn lại số lượng tồn.");
+            location.reload();
+        } else {
+            alert("Không hủy được đơn (trạng thái không phù hợp hoặc lỗi).");
+        }
+    })
+    .catch(() => alert("Lỗi máy chủ, vui lòng thử lại."));
+}
+
 
 // ===============================
 // ĐÓNG POPUP

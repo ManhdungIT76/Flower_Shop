@@ -68,23 +68,44 @@ $related_result = $stmtRel->get_result();
 // GỌI API FLASK
 // ==============================
 $product_id = $product['product_id'];
+$userId = $_SESSION['user']['id'] ?? '';
 
-$api_url = "http://localhost:5000/api/recommend?product_id=" . $product_id;
-$api_response = file_get_contents($api_url);
-$recommend_data = json_decode($api_response, true);
+$api_url = "http://localhost:5000/api/recommend/auto?product_id={$product_id}";
+if (!empty($userId)) {
+    $api_url .= "&user_id={$userId}";
+}
 
-$recommend_products = [];
+$related_products = [];
+$bundle_products  = [];
 
-if (!empty($recommend_data)) {
-    foreach ($recommend_data as $rec) {
-        $rid = $rec['product_id'];
-        $sql = "SELECT * FROM products WHERE product_id = '$rid'";
-        $res = mysqli_query($conn, $sql);
+$api_response = @file_get_contents($api_url);
 
-        if ($row = mysqli_fetch_assoc($res)) {
-            $recommend_products[] = $row;
+if ($api_response !== false) {
+    $recommend_data = json_decode($api_response, true);
+    $related_data = $recommend_data['related'] ?? [];
+    $bundle_data  = $recommend_data['bundle'] ?? [];
+
+    $fetchProducts = function(array $items) use ($conn) {
+        $out = [];
+        $seen = [];
+        foreach ($items as $rec) {
+            if (empty($rec['product_id'])) continue;
+            $pid = $rec['product_id'];
+            if (isset($seen[$pid])) continue;
+            $seen[$pid] = true;
+
+            $pid_safe = mysqli_real_escape_string($conn, $pid);
+            $sql = "SELECT * FROM products WHERE product_id = '$pid_safe' AND stock > 0";
+            $res = mysqli_query($conn, $sql);
+            if ($row = mysqli_fetch_assoc($res)) {
+                $out[] = $row;
+            }
         }
-    }
+        return $out;
+    };
+
+    $related_products = $fetchProducts(is_array($related_data) ? $related_data : []);
+    $bundle_products  = $fetchProducts(is_array($bundle_data) ? $bundle_data : []);
 }
 
 if (!$product) {
@@ -189,42 +210,33 @@ if (!$product) {
     </div>
 </section>
 
-<!-- SẢN PHẨM LIÊN QUAN -->
-<section class="related">
-    <h3>Sản phẩm liên quan</h3>
-
-    <div class="related-products">
-        <?php 
-        if (mysqli_num_rows($related_result) == 0) {
-            echo "<p>Không có sản phẩm liên quan.</p>";
-        }
-
-        while ($rel = mysqli_fetch_assoc($related_result)) : 
-            $img = getImagePath($rel['image_url']);
-        ?>
-        
-        <div class="related-item">
-            <a href="product_details.php?id=<?= $rel['product_id'] ?>">
-                <img src="<?= $img ?>" alt="<?= $rel['product_name'] ?>">
-            </a>
-            <h4><?= $rel['product_name'] ?></h4>
-            <p><?= number_format($rel['price'], 0, ',', '.') ?> đ</p>
-        </div>
-
-        <?php endwhile; ?>
+<!-- SẢN PHẨM GỢI Ý (LIÊN QUAN) -->
+<section class="recommend">
+    <h3>Gợi ý sản phẩm liên quan</h3>
+    <div class="recommend-products">
+        <?php if (empty($related_products)): ?>
+            <p>Chưa có gợi ý.</p>
+        <?php endif; ?>
+        <?php foreach ($related_products as $rec): ?>
+            <div class="recommend-item">
+                <a href="product_details.php?id=<?= $rec['product_id'] ?>">
+                    <img src="<?= getImagePath($rec['image_url']) ?>">
+                </a>
+                <h4><?= $rec['product_name'] ?></h4>
+                <p><?= number_format($rec['price'], 0, ',', '.') ?> đ</p>
+            </div>
+        <?php endforeach; ?>
     </div>
 </section>
 
-<!-- SẢN PHẨM GỢI Ý CHO BẠN -->
+<!-- SẢN PHẨM MUA KÈM -->
 <section class="recommend">
-    <h3>Sản phẩm gợi ý cho bạn</h3>
-
+    <h3>Gợi ý mua kèm</h3>
     <div class="recommend-products">
-        <?php if (empty($recommend_products)): ?>
-            <p>Chưa có dữ liệu gợi ý.</p>
+        <?php if (empty($bundle_products)): ?>
+            <p>Chưa có gợi ý.</p>
         <?php endif; ?>
-
-        <?php foreach ($recommend_products as $rec): ?>
+        <?php foreach ($bundle_products as $rec): ?>
             <div class="recommend-item">
                 <a href="product_details.php?id=<?= $rec['product_id'] ?>">
                     <img src="<?= getImagePath($rec['image_url']) ?>">

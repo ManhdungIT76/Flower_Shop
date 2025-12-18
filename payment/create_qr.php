@@ -82,24 +82,28 @@ if (isset($_POST['create_qr'])) {
     $fee = (float)$_POST['delivery_fee'];
 
     // Kiểm tra xem đã tạo đơn QR chưa
-    $check = $conn->query("
-        SELECT order_id 
+    $check = $conn->prepare("
+        SELECT order_id
         FROM orders
-        WHERE user_id='$user_id' 
-          AND payment_status='Chưa thanh toán'
-          AND payment_method_id='TT002'
+        WHERE user_id=? 
+        AND payment_status='Chưa thanh toán'
+        AND payment_method_id='TT002'
+        AND status<>'Đã hủy'
         ORDER BY order_date DESC
         LIMIT 1
     ");
+    $check->bind_param("s", $user_id);
+    $check->execute();
+    $checkRes = $check->get_result();
 
-    if ($check->num_rows > 0) {
-        $old_order = $check->fetch_assoc()['order_id'];
+    if ($checkRes->num_rows > 0) {
+    $old_order = $checkRes->fetch_assoc()['order_id'];
 
-        echo json_encode([
-            "status" => "already_created",
-            "order_id" => $old_order
-        ]);
-        exit;
+    echo json_encode([
+        "status"   => "already_created",
+        "order_id" => $old_order
+    ]);
+    exit;
     }
 
     /* ------------------ Tính tổng -------------------------- */
@@ -125,7 +129,7 @@ try {
     $getID = $conn->query("
         SELECT order_id 
         FROM orders
-        WHERE user_id = '$user_id'
+        WHERE user_id = '$user_id' AND status<>'Đã hủy'
         ORDER BY order_date DESC
         LIMIT 1
     ");

@@ -13,6 +13,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout_cod'])) {
         echo "<script>alert('Vui lòng đăng nhập trước!'); window.location='login.php';</script>";
         exit;
     }
+    
+    $existing_order_id = trim($_POST['existing_order_id'] ?? '');
+    if ($existing_order_id !== '') {
+    $stmt = $conn->prepare("
+        SELECT order_id FROM orders 
+        WHERE order_id=? AND user_id=? 
+          AND payment_method_id='TT002' 
+          AND payment_status='Chưa thanh toán'
+        LIMIT 1
+    ");
+    $stmt->bind_param("ss", $existing_order_id, $user_id);
+    $stmt->execute();
+    $found = $stmt->get_result()->fetch_assoc();
+
+    if ($found) {
+        $items = json_decode($_POST['items'], true);
+        $fee   = (float)$_POST['delivery_fee'];
+        $total = 0;
+        foreach ($items as $i) { $total += ($i['price'] * $i['qty']); }
+        $total += $fee;
+
+        $upd = $conn->prepare("
+            UPDATE orders 
+            SET total_amount=?, payment_method_id='TT001', 
+                delivery_method_id=?, payment_status='Chưa thanh toán', 
+                status='Chờ xác nhận', note=? 
+            WHERE order_id=? AND user_id=?
+        ");
+        $upd->bind_param("dssss", $total, $delivery_method_id, $note, $existing_order_id, $user_id);
+        $upd->execute();
+
+        $u2 = $conn->prepare("
+            UPDATE users 
+            SET full_name=?, phone_number=?, shipping_address=? 
+            WHERE user_id=?
+        ");
+        $u2->bind_param("ssss", $fullname, $phone, $address, $user_id);
+        $u2->execute();
+
+        // Nếu muốn giữ giỏ hàng đến khi thanh toán thành công, đừng unset $_SESSION['cart'] ở đây.
+        echo "<script>alert('Đã chuyển đơn QR sang COD thành công!'); window.location='orders.php';</script>";
+        exit;
+    }
+}
 
     $user_id  = $_SESSION['user']['id'];
     $fullname = $_POST['fullname'];
@@ -217,6 +261,8 @@ $userInfo = $u->get_result()->fetch_assoc();
 <input type="hidden" id="orderItems" name="items">
 <input type="hidden" id="paymentMethod">
 <input type="hidden" id="deliveryFee" name="delivery_fee" value="20000">
+<input type="hidden" id="existingOrderId" name="existing_order_id">
+
 
 <label>Họ tên:</label>
 <input type="text" name="fullname" required value="<?= $userInfo['full_name'] ?>">
@@ -317,8 +363,10 @@ function openPopup() {
     updateDeliveryFee();
 }
 
-function closePopup() { overlay.style.display = "none";
-    if (checkInterval) clearInterval(checkInterval); }
+function closePopup() {
+    overlay.style.display = "none";
+    // không clearInterval, không hủy đơn => QR và đơn vẫn tồn tại
+}
 
 function selectPayment(type) {
     document.getElementById("codCard").classList.remove("active");
@@ -335,6 +383,12 @@ function selectPayment(type) {
         document.getElementById("paymentMethod").value = "qr";
         document.getElementById("btnCOD").style.display = "none";
         document.getElementById("btnQR").style.display = "block";
+        // Nếu đã có QR (currentOrderId) thì bật lại khung QR ngay
+        if (currentOrderId) {
+            document.getElementById("qrFrame").src = "payment/create_qr.php?order_id=" + currentOrderId;
+            document.getElementById("qrBox").style.display = "block";
+            document.getElementById("btnQR").disabled = true;
+        }
     }
 }
 
@@ -361,24 +415,22 @@ function updateDeliveryFee() {
 ============================= */
 let currentOrderId = null;
 async function cancelQR() {
-
     if (currentOrderId) {
-    await fetch("pages/cancel_order.php", {
-        method: "POST",
-        body: new URLSearchParams({ order_id: currentOrderId })
-    });
+        await fetch("pages/cancel_order.php", {
+            method: "POST",
+            body: new URLSearchParams({ order_id: currentOrderId })
+        });
+    }
+    // reset UI
+    currentOrderId = null;
+    document.getElementById("existingOrderId").value = "";
+    if (checkInterval) clearInterval(checkInterval);
+    document.getElementById("qrBox").style.display = "none";
+    document.getElementById("qrFrame").src = "";
+    document.getElementById("btnQR").disabled = false;
+    document.getElementById("btnCancelQR").style.display = "none";
+    closePopup(); // chỉ đóng popup, không đụng giỏ hàng
 }
-currentOrderId = null;
-if (checkInterval) clearInterval(checkInterval);
-document.getElementById("qrBox").style.display = "none";
-document.getElementById("qrFrame").src = "";
-document.getElementById("btnQR").disabled = false;
-document.getElementById("btnCancelQR").style.display = "none";
-closePopup();
-location.reload();
-}
-
-
 
 /* =============================
    SAU KHI QR ĐÃ TẠO
@@ -403,7 +455,7 @@ async function submitQR() {
         currentOrderId = data.order_id;
         document.getElementById("qrFrame").src =
         "payment/create_qr.php?order_id=" + data.order_id;
-
+        document.getElementById("existingOrderId").value = data.order_id;
         document.getElementById("qrBox").style.display = "block";
         document.getElementById("btnQR").disabled = true;
 
@@ -419,7 +471,7 @@ async function submitQR() {
         startCheckPayment(data.order_id);
         document.getElementById("qrFrame").src =
         "payment/create_qr.php?order_id=" + data.order_id;
-
+        document.getElementById("existingOrderId").value = data.order_id;
         document.getElementById("qrBox").style.display = "block";
         document.getElementById("btnQR").disabled = true;
 

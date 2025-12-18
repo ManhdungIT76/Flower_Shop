@@ -178,3 +178,33 @@ Array
     [accumulated] => 0
     [id] => 33457973
 )
+Array
+(
+    [gateway] => MBBank
+    [transactionDate] => 2025-12-02 07:40:00
+    [accountNumber] => 0363074451
+    [subAccount] => 
+    [code] => 
+    [content] => HD2044
+    [transferType] => in
+    [description] => BankAPINotify HD2044
+    [transferAmount] => 2000
+    [referenceCode] => FT25336820830204
+    [accumulated] => 0
+    [id] => 33489225
+)
+Array
+(
+    [gateway] => MBBank
+    [transactionDate] => 2025-12-02 09:15:00
+    [accountNumber] => 0363074451
+    [subAccount] => 
+    [code] => 
+    [content] => HD2046
+    [transferType] => in
+    [description] => BankAPINotify HD2046
+    [transferAmount] => 2000
+    [referenceCode] => FT25336770878477
+    [accumulated] => 0
+    [id] => 33500739
+)
