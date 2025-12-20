@@ -1,90 +1,98 @@
-/* ===============================
-   LỊCH SỬ ĐÁNH GIÁ — CSS RIÊNG
-================================ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-body {
-    background: #fffaf5;
-}
+.page-review { background: #fff6fa; color: #6b2f44; margin: 0; font-family: "Poppins", sans-serif; }
+.page-review * { box-sizing: border-box; }
 
-/* --- Breadcrumb --- */
+.page-review-content { padding-bottom: 60px; }
+
+/* breadcrumb cố định dưới header sticky */
 .breadcrumb {
-    background: #f8efe6;
-    padding: 15px 80px;
-    font-size: 15px;
-    color: #6a5f56;
-    box-shadow: inset 0 -1px 0 #e6d6c6;
+  position: sticky;
+  top: 86px;
+  z-index: 900;
+  background: #fff1f6;
+  padding: 14px 70px;
+  font-size: 15px;
+  color: #7a4458;
+  box-shadow: inset 0 -1px 0 #ffd6e7;
+  margin: 0;
 }
-.breadcrumb a {
-    color: #c59a86;
-    font-weight: 500;
-}
+.breadcrumb a { color: #e91e63; font-weight: 600; text-decoration: none; }
+.breadcrumb i { margin-right: 6px; color: #c08aa0; }
 
-/* --- Khung chính --- */
+/* khung chính */
 .history-container {
-    max-width: 900px;
-    margin: 40px auto;
-    background: white;
-    padding: 25px 35px;
-    border-radius: 16px;
-    box-shadow: 0 5px 18px rgba(0,0,0,0.1);
+  max-width: 960px;
+  margin: 36px auto 0;
+  background: #ffffff;
+  padding: 28px 34px;
+  border-radius: 18px;
+  box-shadow: 0 10px 26px rgba(233,30,99,0.12);
+  border: 1px solid #ffe0f0;
 }
-
 .history-container h2 {
-    text-align: center;
-    margin-bottom: 25px;
-    color: #5a3f36;
+  text-align: center;
+  margin: 0 0 24px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #7a2d44;
 }
 
-/* --- Item đánh giá --- */
+/* item */
 .review-item {
-    display: flex;
-    gap: 20px;
-    padding: 18px 0;
-    border-bottom: 1px solid #eee;
+  display: flex;
+  gap: 18px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f3dce6;
+  align-items: center;
 }
+.review-item:last-child { border-bottom: none; }
 
-.review-item:last-child {
-    border-bottom: none;
-}
-
-/* ảnh */
 .review-img {
-    width: 80px;
-    height: 80px;
-    border-radius: 10px;
-    object-fit: cover;
+  width: 82px;
+  height: 82px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 2px solid #ffd6e7;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.06);
 }
 
-/* nội dung */
-.review-content {
-    flex: 1;
-}
-
+.review-content { flex: 1; }
 .review-content h3 {
-    margin: 0 0 8px;
-    font-size: 17px;
-    color: #5a3f36;
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: #5a3f36;
 }
 
-/* Sao (mặc định xám) */
-.stars i {
-    color: #ccc;
-    margin-right: 3px;
-}
+/* sao */
+.stars i { color: #d9b8c8; margin-right: 4px; font-size: 18px; }
+.stars i.active { color: #ffc107 !important; }
 
-/* Sao được đánh giá */
-.stars i.active {
-    color: #ffbd2b !important;
-}
-
-
-/* Comment */
+/* comment */
 .comment-box {
-    background: #fef7f0;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-top: 8px;
-    font-size: 14px;
-    color: #4b3f36;
-    line-height: 1.5;
+  background: #fff6fa;
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #4b3f36;
+  line-height: 1.55;
+  border: 1px solid #ffd6e7;
+  white-space: pre-line;
+}
+
+/* empty state */
+.empty-state {
+  text-align: center;
+  color: #7a4458;
+  font-size: 16px;
+  margin: 10px 0 0;
+}
+
+/* mobile */
+@media (max-width: 640px) {
+  .breadcrumb { padding: 12px 18px; top: 78px; }
+  .history-container { margin: 20px 14px 0; padding: 22px 18px; }
+  .review-item { flex-direction: column; align-items: flex-start; }
+  .review-img { width: 100%; height: 190px; }
 }

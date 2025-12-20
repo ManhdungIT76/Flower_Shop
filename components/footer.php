@@ -53,5 +53,188 @@
         }
       });
     });
+
   </script>
+
+  <!-- CHATBOT -->
+<div id="chatbot-widget">
+  <div id="chat-icon">💬</div>
+
+  <div id="chat-window">
+    <div id="chat-header">Chat hỗ trợ khách hàng</div>
+
+    <div id="chat-messages"></div>
+
+    <div id="chat-input">
+      <input type="text" id="userMessage" placeholder="Nhập tin nhắn...">
+      <button id="sendBtn">Gửi</button>
+    </div>
+  </div>
+</div>
+<script>
+const chatIcon = document.getElementById("chat-icon");
+const chatWindow = document.getElementById("chat-window");
+const messagesDiv = document.getElementById("chat-messages");
+const inputField = document.getElementById("userMessage");
+const sendBtn = document.getElementById("sendBtn");
+
+// Avatar
+const botAvatar = "assets/images/z7128943872304_7000db2b5f7c476efb8c375bf165f8e8.jpg";
+const userAvatar = "assets/images/avatar_user.jpg";
+
+let historyLoaded = false;
+let isSending = false;
+
+// ================== GREETING HELPERS ==================
+function getBotGreetingHTML() {
+  return `Chào anh/chị ạ 🌸<br>
+  Em là trợ lý của <b>Blossomy Bliss</b>.<br>
+  Anh/chị cần em hỗ trợ tìm hoa theo <b>dịp tặng</b>, <b>ngân sách</b> hay <b>loại hoa</b> nào không ạ?`;
+}
+
+function markGreeted() {
+  sessionStorage.setItem("bb_chat_greeted", "1");
+}
+
+function hasGreeted() {
+  return sessionStorage.getItem("bb_chat_greeted") === "1";
+}
+
+// ================== UTILS ==================
+// Escape HTML cho user (để user không nhét script)
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+// ================== TYPING EFFECT ==================
+function showTyping() {
+  let box = document.createElement("div");
+  box.className = "msg-box bot-box typing-box";
+  box.innerHTML = `
+      <img src="${botAvatar}" class="avatar">
+      <div class="typing">⋯</div>
+  `;
+  messagesDiv.appendChild(box);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function removeTyping() {
+  const t = document.querySelector(".typing-box");
+  if (t) t.remove();
+}
+
+// ================== APPEND MESSAGE ==================
+function appendMessage(text, role) {
+  let box = document.createElement("div");
+  box.className = `msg-box ${role}-box`;
+
+  let avatar = role === "user" ? userAvatar : botAvatar;
+  const content = (role === "user") ? escapeHtml(text) : (text ?? "");
+
+  box.innerHTML = `
+    <img src="${avatar}" class="avatar">
+    <div class="message ${role}">${content}</div>
+  `;
+
+  messagesDiv.appendChild(box);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// ================== LOAD HISTORY + AUTO GREETING ==================
+async function loadHistoryOnce() {
+  if (historyLoaded) return;
+  historyLoaded = true;
+
+  try {
+    const res = await fetch("/Flower_Shop/components/get_history.php", {
+      method: "GET",
+      credentials: "same-origin"
+    });
+    const data = await res.json();
+
+    messagesDiv.innerHTML = "";
+
+    if (Array.isArray(data) && data.length > 0) {
+      // Có lịch sử -> render lịch sử
+      data.forEach(msg => {
+        appendMessage(msg.message, msg.role);
+      });
+      markGreeted();
+    } else {
+      // ✅ Không có lịch sử -> bot chào trước
+      if (!hasGreeted()) {
+        appendMessage(getBotGreetingHTML(), "bot");
+        markGreeted();
+      }
+    }
+  } catch (e) {
+    console.warn("Không load được history", e);
+
+    // fallback: vẫn chào để UX không trống
+    if (!hasGreeted()) {
+      appendMessage(getBotGreetingHTML(), "bot");
+      markGreeted();
+    }
+  }
+}
+
+// ================== TOGGLE CHAT ==================
+chatIcon.onclick = async () => {
+  const isOpen = (chatWindow.style.display === "flex");
+  chatWindow.style.display = isOpen ? "none" : "flex";
+
+  if (!isOpen) {
+    await loadHistoryOnce();
+    setTimeout(() => inputField.focus(), 100);
+  }
+};
+
+// ================== SEND MESSAGE ==================
+async function sendMessage() {
+  const message = inputField.value.trim();
+  if (!message || isSending) return;
+
+  isSending = true;
+  sendBtn.disabled = true;
+
+  appendMessage(message, "user");
+  inputField.value = "";
+
+  showTyping();
+
+  try {
+    const response = await fetch("/Flower_Shop/components/chat.php", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message })
+    });
+
+    const data = await response.json();
+    removeTyping();
+
+    const reply = data?.reply ?? "Xin lỗi anh/chị, em chưa nhận được phản hồi!";
+    appendMessage(reply, "bot");
+
+  } catch (err) {
+    console.error(err);
+    removeTyping();
+    appendMessage("⚠️ Lỗi kết nối server!", "bot");
+  } finally {
+    isSending = false;
+    sendBtn.disabled = false;
+  }
+}
+
+sendBtn.onclick = sendMessage;
+
+inputField.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+</script>
 </footer>

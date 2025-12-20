@@ -11,15 +11,40 @@ $isLoggedIn = isset($_SESSION['user']);
 $id = $_GET['id'];
 
 // LẤY THÔNG TIN SẢN PHẨM
-$stmt = $conn->prepare("SELECT * FROM products WHERE product_id = ?");
-$stmt->bind_param("s", $id);
-$stmt->execute();
-$product = $stmt->get_result()->fetch_assoc();
+$sql = "SELECT * FROM products WHERE product_id = '$id'";
+$result = mysqli_query($conn, $sql);
+$product = mysqli_fetch_assoc($result);
 
-if (!$product) { die("Sản phẩm không tồn tại!"); }
+if (!$product) {
+    die("Sản phẩm không tồn tại!");
+}
 
 $category_id = $product['category_id'];
-$current_id = $product['product_id'];
+$current_id  = $product['product_id'];
+
+// ====== USER_ID + CHECK USER THƯỜNG XUYÊN ======
+$user_id = $_SESSION['user']['id'] ?? null;
+
+$isFrequentUser = false;
+if ($user_id) {
+    $sqlFrequent = "
+        SELECT 
+            COUNT(DISTINCT o.order_id) AS total_orders,
+            COUNT(DISTINCT od.product_id) AS distinct_products
+        FROM orders o
+        JOIN order_details od ON o.order_id = od.order_id
+        WHERE o.user_id = ?
+    ";
+    $st = mysqli_prepare($conn, $sqlFrequent);
+    mysqli_stmt_bind_param($st, "s", $user_id);
+    mysqli_stmt_execute($st);
+    $rs = mysqli_stmt_get_result($st);
+    $r  = mysqli_fetch_assoc($rs) ?: ['total_orders'=>0,'distinct_products'=>0];
+
+    if ((int)$r['total_orders'] >= 5 || (int)$r['distinct_products'] >= 10) {
+        $isFrequentUser = true;
+    }
+}
 
 // ==============================
 // LẤY ĐÁNH GIÁ SẢN PHẨM
@@ -34,7 +59,7 @@ $stmt_avg->bind_param("s", $id);
 $stmt_avg->execute();
 $ratingData = $stmt_avg->get_result()->fetch_assoc();
 
-$avgRating = $ratingData['avg_rating'] ? round($ratingData['avg_rating'], 1) : 0;
+$avgRating    = $ratingData['avg_rating'] ? round($ratingData['avg_rating'], 1) : 0;
 $totalReviews = $ratingData['total_reviews'];
 
 // Lấy danh sách đánh giá
@@ -49,67 +74,82 @@ $stmt_rev->bind_param("s", $id);
 $stmt_rev->execute();
 $reviews = $stmt_rev->get_result();
 
-// Lấy 4 sản phẩm bán chạy nhất cùng danh mục
+// ==============================
+// SẢN PHẨM LIÊN QUAN: cùng loại + ngang tầm giá
+// ==============================
+$current_price = (float)$product['price'];
+
 $related_query = "
-    SELECT p.product_id, p.product_name, p.price, p.image_url,
-           IFNULL(SUM(od.quantity), 0) AS total_sold
+    SELECT 
+        p.product_id,
+        p.product_name,
+        p.price,
+        p.image_url
     FROM products p
-    LEFT JOIN order_details od ON od.product_id = p.product_id
-    WHERE p.category_id = ? AND p.product_id != ?
-    GROUP BY p.product_id
-    ORDER BY total_sold DESC
-    LIMIT 4";
-$stmtRel = $conn->prepare($related_query);
-$stmtRel->bind_param("ss", $category_id, $current_id);
-$stmtRel->execute();
-$related_result = $stmtRel->get_result();
+    WHERE p.category_id = '$category_id'
+      AND p.product_id <> '$current_id'
+      AND p.price BETWEEN " . ($current_price * 0.85) . " AND " . ($current_price * 1.15) . "
+    ORDER BY RAND()
+    LIMIT 10
+";
+$related_result = mysqli_query($conn, $related_query);
 
 // ==============================
-// GỌI API FLASK
+// GỢI Ý (user mới: item-item, user thường xuyên: user-item + fallback item-item)
 // ==============================
-$product_id = $product['product_id'];
-$userId = $_SESSION['user']['id'] ?? '';
+$limit = 10;
+$recommend_products = [];
 
-$api_url = "http://localhost:5000/api/recommend/auto?product_id={$product_id}";
-if (!empty($userId)) {
-    $api_url .= "&user_id={$userId}";
+// chống trùng
+$seen = [];
+$seen[$current_id] = true;
+
+// (A) USER THƯỜNG XUYÊN -> ưu tiên CF user-item
+if ($isFrequentUser && $user_id) {
+    $api_url = "http://localhost:5000/api/recommend/user"
+             . "?user_id=" . urlencode($user_id)
+             . "&exclude=" . urlencode($current_id)
+             . "&limit=" . $limit;
+
+    $api_response = @file_get_contents($api_url);
+    $recommend_products = $api_response ? json_decode($api_response, true) : [];
+    if (!is_array($recommend_products)) $recommend_products = [];
+
+    foreach ($recommend_products as $p) {
+        if (!empty($p['product_id'])) $seen[$p['product_id']] = true;
+    }
+
+} else {
+    // (B) USER MỚI / CHƯA ĐĂNG NHẬP -> CF item-item
+    $api_url = "http://localhost:5000/api/recommend"
+             . "?product_id=" . urlencode($current_id);
+
+    $api_response = @file_get_contents($api_url);
+    $recommend_products = $api_response ? json_decode($api_response, true) : [];
+    if (!is_array($recommend_products)) $recommend_products = [];
+
+    foreach ($recommend_products as $p) {
+        if (!empty($p['product_id'])) $seen[$p['product_id']] = true;
+    }
 }
 
-$related_products = [];
-$bundle_products  = [];
+// (C) Nếu USER THƯỜNG XUYÊN mà CHƯA ĐỦ -> bù thêm bằng item-item
+if (count($recommend_products) < $limit && $isFrequentUser && $user_id) {
+    $api2 = "http://localhost:5000/api/recommend"
+          . "?product_id=" . urlencode($current_id);
 
-$api_response = @file_get_contents($api_url);
+    $r2 = @file_get_contents($api2);
+    $more = $r2 ? json_decode($r2, true) : [];
+    if (!is_array($more)) $more = [];
 
-if ($api_response !== false) {
-    $recommend_data = json_decode($api_response, true);
-    $related_data = $recommend_data['related'] ?? [];
-    $bundle_data  = $recommend_data['bundle'] ?? [];
-
-    $fetchProducts = function(array $items) use ($conn) {
-        $out = [];
-        $seen = [];
-        foreach ($items as $rec) {
-            if (empty($rec['product_id'])) continue;
-            $pid = $rec['product_id'];
-            if (isset($seen[$pid])) continue;
+    foreach ($more as $p) {
+        if (count($recommend_products) >= $limit) break;
+        $pid = $p['product_id'] ?? null;
+        if ($pid && empty($seen[$pid])) {
+            $recommend_products[] = $p;
             $seen[$pid] = true;
-
-            $pid_safe = mysqli_real_escape_string($conn, $pid);
-            $sql = "SELECT * FROM products WHERE product_id = '$pid_safe' AND stock > 0";
-            $res = mysqli_query($conn, $sql);
-            if ($row = mysqli_fetch_assoc($res)) {
-                $out[] = $row;
-            }
         }
-        return $out;
-    };
-
-    $related_products = $fetchProducts(is_array($related_data) ? $related_data : []);
-    $bundle_products  = $fetchProducts(is_array($bundle_data) ? $bundle_data : []);
-}
-
-if (!$product) {
-    die("Sản phẩm không tồn tại!");
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -210,33 +250,42 @@ if (!$product) {
     </div>
 </section>
 
-<!-- SẢN PHẨM GỢI Ý (LIÊN QUAN) -->
-<section class="recommend">
-    <h3>Gợi ý sản phẩm liên quan</h3>
-    <div class="recommend-products">
-        <?php if (empty($related_products)): ?>
-            <p>Chưa có gợi ý.</p>
-        <?php endif; ?>
-        <?php foreach ($related_products as $rec): ?>
-            <div class="recommend-item">
-                <a href="product_details.php?id=<?= $rec['product_id'] ?>">
-                    <img src="<?= getImagePath($rec['image_url']) ?>">
-                </a>
-                <h4><?= $rec['product_name'] ?></h4>
-                <p><?= number_format($rec['price'], 0, ',', '.') ?> đ</p>
-            </div>
-        <?php endforeach; ?>
+<!-- SẢN PHẨM LIÊN QUAN -->
+<section class="related">
+    <h3>Sản phẩm liên quan</h3>
+
+    <div class="related-products">
+        <?php 
+        if (mysqli_num_rows($related_result) == 0) {
+            echo "<p>Không có sản phẩm liên quan.</p>";
+        }
+
+        while ($rel = mysqli_fetch_assoc($related_result)) : 
+            $img = getImagePath($rel['image_url']);
+        ?>
+        
+        <div class="related-item">
+            <a href="product_details.php?id=<?= $rel['product_id'] ?>">
+                <img src="<?= $img ?>" alt="<?= $rel['product_name'] ?>">
+            </a>
+            <h4><?= $rel['product_name'] ?></h4>
+            <p><?= number_format($rel['price'], 0, ',', '.') ?> đ</p>
+        </div>
+
+        <?php endwhile; ?>
     </div>
 </section>
 
-<!-- SẢN PHẨM MUA KÈM -->
+<!-- SẢN PHẨM GỢI Ý CHO BẠN -->
 <section class="recommend">
-    <h3>Gợi ý mua kèm</h3>
+    <h3>Sản phẩm gợi ý cho bạn</h3>
+
     <div class="recommend-products">
-        <?php if (empty($bundle_products)): ?>
-            <p>Chưa có gợi ý.</p>
+        <?php if (empty($recommend_products)): ?>
+            <p>Chưa có dữ liệu gợi ý.</p>
         <?php endif; ?>
-        <?php foreach ($bundle_products as $rec): ?>
+
+        <?php foreach ($recommend_products as $rec): ?>
             <div class="recommend-item">
                 <a href="product_details.php?id=<?= $rec['product_id'] ?>">
                     <img src="<?= getImagePath($rec['image_url']) ?>">
@@ -322,9 +371,6 @@ if (!$product) {
 
     const isLoggedIn = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
 
-    // ================================
-    // 1️⃣ Nếu chưa đăng nhập → chuyển login
-    // ================================
     addBtn.addEventListener("click", () => {
         const quantity = quantityInput.value;
         confirmText.innerHTML =
@@ -333,9 +379,6 @@ if (!$product) {
         confirmPopup.style.display = "flex";
     });
 
-    // ================================
-    // 2) Nút mua ngay: thêm vào giỏ rồi sang giỏ hàng
-    // ================================
     document.querySelector(".buy-now-btn").addEventListener("click", (e) => {
         e.preventDefault();
         if (!isLoggedIn) {
@@ -351,9 +394,6 @@ if (!$product) {
             });
     });
 
-    // ================================
-    // 3️⃣ Xử lý popup thêm giỏ
-    // ================================
     confirmNo.addEventListener("click", () => {
         confirmPopup.style.display = "none";
     });
@@ -365,7 +405,7 @@ if (!$product) {
 
         fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
             .then(response => response.text())
-            .then(data => {
+            .then(() => {
                 successPopup.style.display = "flex";
             });
     });

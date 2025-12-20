@@ -1,62 +1,89 @@
 body {
-  background-color: #fffaf5;
+  background: linear-gradient(180deg, #fff7f3, #fffaf5);
   font-family: "Poppins", sans-serif;
   margin: 0 !important;
   padding: 0 !important;
-  line-height: 1; /* FIX GẠCH DƯỚI HEADER */
+  line-height: 1;
+  color: #4b3f36;
 }
 
+/* CARD PROFILE */
 .profile-section {
   max-width: 500px;
-  background: #fff;
-  margin: 50px auto;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  background: #ffffff;
+  margin: 60px auto;
+  padding: 32px 34px;
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(241, 167, 145, 0.25);
+  border: 1px solid #f3d6c7;
 }
 
+/* TITLE */
 .profile-section h2 {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #e46a8a;
 }
 
+/* AVATAR */
 .profile-pic {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 22px;
 }
 
 .profile-pic img {
-  width: 90px;
-  height: 90px;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
+  border: 4px solid #f1a791;
+  box-shadow: 0 6px 14px rgba(241, 167, 145, 0.4);
 }
 
+/* FORM */
 form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
+/* INPUT */
 input {
-  padding: 10px 12px;
-  border: 1px solid #d8b6a4;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1.5px solid #f3c1d3;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.25s ease;
+  background: #fff;
 }
 
+input:focus {
+  outline: none;
+  border-color: #f1a791;
+  box-shadow: 0 0 0 3px rgba(241, 167, 145, 0.25);
+}
+
+/* BUTTON */
 .btn {
-  background: #d8b6a4;
-  padding: 12px;
+  background: linear-gradient(135deg, #f1a791, #e46a8a);
+  padding: 13px;
   border: none;
   color: #fff;
-  border-radius: 8px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 10px 25px rgba(228, 106, 138, 0.35);
 }
 
 .btn:hover {
-  background: #c59a86;
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(228, 106, 138, 0.45);
 }
 
-/* FIX: Xóa mọi khoảng trắng đẩy header */
+/* FIX: không đẩy header */
 header + section {
   margin-top: 0 !important;
   padding-top: 0 !important;

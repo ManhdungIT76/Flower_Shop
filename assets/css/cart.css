@@ -7,48 +7,38 @@ body {
   padding: 0;
 }
 
-/* ===== HEADER ===== */
-header {
-  background-color: #fdf2ec !important;
-  padding: 15px 60px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 999;
-}
+/* ✅ KHÔNG STYLE HEADER Ở ĐÂY NỮA (để dùng global.css) */
+/* header { ... }  <-- XÓA */
 
-/* ===== BREADCRUMB (ĐỒNG BỘ VỚI HEADER) ===== */
+/* ===== BREADCRUMB (đồng bộ tông hồng/pastel) ===== */
 .breadcrumb {
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #fdf2ec;
-  padding: 18px 60px;
-  font-size: 16px;
+
+  background: #fff6fa;
+  padding: 14px 70px;
+  font-size: 15px;
   color: #4b3f36;
-  font-weight: 400;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+
+  border-bottom: 1px solid #ffd6ef;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+
   position: sticky;
-  top: 75px;
-  z-index: 998;
+  top: 86px;          /* ✅ khớp chiều cao header của bạn (global.css) */
+  z-index: 900;
 }
 
 .breadcrumb a {
-  color: #f1a791;
-  font-weight: 500;
+  color: #e91e63;
+  font-weight: 600;
   text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: color 0.3s ease;
+  transition: 0.2s;
 }
-
-.breadcrumb a:hover {
-  color: #d97c67;
-}
+.breadcrumb a:hover { opacity: 0.85; }
 
 .breadcrumb i {
-  font-size: 14px;
+  font-size: 13px;
   color: #b08f83;
 }
 
@@ -56,17 +46,18 @@ header {
 .cart-container {
   max-width: 1100px;
   background: #fff;
-  margin: 60px auto;
+  margin: 38px auto 70px;
   padding: 40px 50px;
-  border-radius: 18px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  border: 1px solid #ffe0f0;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
 }
 
 .cart-container h2 {
   text-align: center;
   font-size: 26px;
-  font-weight: 600;
-  margin-bottom: 30px;
+  font-weight: 700;
+  margin-bottom: 26px;
   color: #4b3f36;
 }
 
@@ -76,17 +67,16 @@ table {
   border-collapse: collapse;
 }
 
-th,
-td {
+th, td {
   text-align: center;
   padding: 12px;
   border-bottom: 1px solid #f1e1d6;
 }
 
 th {
-  color: #f1a791;
-  font-weight: 600;
-  background-color: #fffaf8;
+  color: #e91e63;
+  font-weight: 700;
+  background: #fff6fa;
 }
 
 td img {
@@ -96,46 +86,79 @@ td img {
   object-fit: cover;
 }
 
-.select-item {
-  cursor: pointer;
-  accent-color: #f1a791;
+/* ===== qty ===== */
+.qty-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.qty-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #fff1f6;
+  border-radius: 10px;
+  color: #4b3f36;
+  font-size: 20px;
+  font-weight: 800;
+  text-decoration: none;
+
+  transition: 0.2s;
+  border: 1px solid #ffd6ef;
+}
+
+.qty-btn:hover {
+  background: #ffd2ec;
+  transform: translateY(-1px);
+}
+
+.qty-number {
+  min-width: 24px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #4b3f36;
 }
 
 /* ===== TOTAL & BUTTON ===== */
 .total {
   text-align: right;
-  margin-top: 20px;
+  margin-top: 18px;
   font-size: 18px;
 }
 
-.total strong {
-  color: #f1a791;
+.total b {
+  color: #e91e63;
 }
 
 .checkout-btn {
   display: block;
   margin-left: auto;
-  margin-top: 20px;
-  background-color: #f4c7b8;
-  color: #4b3f36;
+  margin-top: 16px;
+
+  background: #e91e63;
+  color: #fff;
   border: none;
   padding: 12px 30px;
-  border-radius: 25px;
+  border-radius: 999px;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: 0.2s;
+  box-shadow: 0 10px 22px rgba(233, 30, 99, 0.25);
 }
 
 .checkout-btn:hover {
-  background-color: #f1a791;
-  color: #fff;
+  opacity: 0.92;
   transform: translateY(-2px);
-  box-shadow: 0 4px 10px rgba(241, 167, 145, 0.3);
 }
 
 /* ===== POPUP OVERLAY ===== */
-/* ===== POPUP OVERLAY (SỬA ĐỂ KHÔNG BỊ HEADER ĐÈ) ===== */
 .overlay {
   position: fixed;
   top: 0;
@@ -146,85 +169,76 @@ td img {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 5000; /* ✅ cao hơn header và breadcrumb */
-  backdrop-filter: blur(2px); /* hiệu ứng mờ nhẹ nền cho sang */
+  z-index: 5000;
+  backdrop-filter: blur(2px);
 }
 
-
-/* ===== POPUP CONTENT (TỐI ƯU GỌN HƠN) ===== */
+/* ===== POPUP ===== */
 .popup {
-  background: #fffaf7;
-  width: 55%;
-  max-width: 680px;
-  border-radius: 18px;
-  padding: 30px 40px;
+  background: #fff;
+  width: 56%;
+  max-width: 700px;
+  border-radius: 20px;
+  padding: 28px 34px;
   position: relative;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
   max-height: 85vh;
   overflow-y: auto;
-  animation: fadeInScale 0.25s ease-in-out;
+  border: 1px solid #ffe0f0;
+  animation: fadeInScale 0.22s ease-in-out;
 }
 
-/* Hiệu ứng mở */
 @keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .popup h3 {
   text-align: center;
-  margin-bottom: 20px;
-  font-size: 21px;
+  margin-bottom: 18px;
+  font-size: 20px;
   color: #4b3f36;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .close-btn {
   position: absolute;
-  top: 12px;
-  right: 18px;
-  font-size: 22px;
+  top: 10px;
+  right: 14px;
+  font-size: 26px;
   cursor: pointer;
   color: #7b6d63;
   transition: 0.2s;
 }
-
-.close-btn:hover {
-  color: #f1a791;
-}
+.close-btn:hover { color: #e91e63; }
 
 /* ===== FORM INPUTS ===== */
 .popup label {
-  font-weight: 500;
+  font-weight: 700;
   color: #4b3f36;
   display: block;
-  margin-bottom: 5px;
+  margin: 10px 0 6px;
 }
 
 .popup input,
-.popup textarea {
+.popup textarea,
+.popup select {
   width: 100%;
-  padding: 9px 12px;
-  border: 1px solid #f1d4c8;
-  border-radius: 10px;
+  padding: 11px 12px;
+  border: 1px solid #ffd6ef;
+  border-radius: 12px;
   font-size: 14px;
-  background-color: #fff;
+  background: #fff;
   color: #4b3f36;
-  margin-bottom: 12px;
   outline: none;
-  transition: all 0.2s ease;
+  transition: 0.15s;
 }
 
 .popup input:focus,
-.popup textarea:focus {
-  border-color: #f1a791;
-  box-shadow: 0 0 5px rgba(241, 167, 145, 0.3);
+.popup textarea:focus,
+.popup select:focus {
+  border-color: #e91e63;
+  box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.12);
 }
 
 /* ===== TABLE TRONG POPUP ===== */
@@ -234,26 +248,21 @@ td img {
   margin-top: 10px;
 }
 
-.popup th,
-.popup td {
+.popup th, .popup td {
   padding: 10px;
-  border-bottom: 1px solid #e6d6c6;
+  border-bottom: 1px solid #ffe0f0;
   text-align: center;
 }
 
+.popup th {
+  background: #fff6fa;
+  color: #e91e63;
+}
+
 /* ===== PAYMENT METHOD ===== */
-.payment-method {
-  margin-top: 25px;
-}
-
-.payment-method h4 {
-  color: #4b3f36;
-  margin-bottom: 10px;
-}
-
 .method-options {
   display: flex;
-  gap: 20px;
+  gap: 14px;
   flex-wrap: wrap;
   margin-top: 10px;
 }
@@ -261,127 +270,56 @@ td img {
 .method-card {
   flex: 1;
   min-width: 200px;
-  border: 2px solid #e6d6c6;
-  border-radius: 12px;
-  padding: 18px;
+  border: 2px solid #ffe0f0;
+  border-radius: 14px;
+  padding: 16px;
   text-align: center;
   cursor: pointer;
-  transition: 0.3s;
+  transition: 0.2s;
   background: #fff;
+  font-weight: 800;
 }
 
 .method-card:hover,
 .method-card.active {
-  border-color: #f1a791;
-  background: #fff3ee;
+  border-color: #e91e63;
+  background: #fff6fa;
 }
 
 .method-card i {
-  font-size: 36px;
+  font-size: 34px;
   margin-bottom: 8px;
-  color: #f1a791;
-}
-
-.qr-box {
-  text-align: center;
-  margin-top: 20px;
-  display: none;
-}
-
-.qr-box img {
-  width: 200px;
-  border-radius: 12px;
-  border: 2px solid #f1d4c8;
+  color: #e91e63;
 }
 
 /* ===== SUBMIT BUTTON ===== */
 .btn-submit {
-  background-color: #f1a791;
+  background: #e91e63;
   color: #fff;
   border: none;
-  padding: 10px 0;
-  border-radius: 25px;
+  padding: 12px 0;
+  border-radius: 999px;
   width: 100%;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  margin-top: 20px;
-  transition: all 0.3s ease;
+  margin-top: 14px;
+  transition: 0.2s;
+  box-shadow: 0 12px 26px rgba(233, 30, 99, 0.22);
 }
 
 .btn-submit:hover {
-  background-color: #e28c73;
-  transform: translateY(-2px);
-  box-shadow: 0 3px 8px rgba(241, 167, 145, 0.3);
+  opacity: 0.92;
+  transform: translateY(-1px);
 }
 
-/* ===== FOOTER ===== */
-footer {
-  background-color: #fdf2ec;
-  text-align: center;
-  padding: 30px 10px;
-  font-size: 14px;
-  color: #7b6d63;
-  margin-top: 60px;
-}
+/* ✅ KHÔNG STYLE FOOTER Ở ĐÂY NỮA (để dùng global.css) */
+/* footer { ... }  <-- XÓA */
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .cart-container {
-    padding: 25px 20px;
-  }
-
-  table th,
-  table td {
-    font-size: 14px;
-    padding: 8px;
-  }
-
-  .popup {
-    width: 90%;
-    padding: 25px 20px;
-    max-width: none;
-  }
-
-  .breadcrumb {
-    padding: 12px 25px;
-    font-size: 14px;
-  }
+  .cart-container { padding: 24px 18px; margin: 24px 14px 60px; }
+  table th, table td { font-size: 14px; padding: 8px; }
+  .popup { width: 92%; padding: 22px 16px; max-width: none; }
+  .breadcrumb { padding: 12px 18px; top: 86px; }
 }
-/* Nút tăng giảm số lượng */
-.qty-box {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
-.qty-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: #f8dcd2;         /* pastel nhẹ */
-  border-radius: 8px;
-  color: #5a463a;
-  font-size: 20px;
-  font-weight: bold;
-  text-decoration: none;
-
-  transition: 0.2s;
-  border: 1px solid #e6c3b9;
-}
-
-.qty-btn:hover {
-  background: #eac2b3;
-}
-
-.qty-number {
-  min-width: 24px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: #4b3f36;
-}
-

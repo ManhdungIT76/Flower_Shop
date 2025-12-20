@@ -5,61 +5,64 @@
 }
 
 body {
-  background-color: #fffaf5;
-  color: #4b3f36;
+  background-color: #fff6fa;
+  color: #6b2f44;
   margin: 0;
 }
 
 /* ===== BREADCRUMB ===== */
 .breadcrumb {
-  background-color: #f8efe6;
+  background-color: #fff1f6;
   padding: 15px 80px;
   font-size: 15px;
-  color: #6a5f56;
-  box-shadow: inset 0 -1px 0 #e6d6c6;
+  color: #7a4458;
+  box-shadow: inset 0 -1px 0 #ffd6e7;
 }
 .breadcrumb a {
-  color: #c59a86;
-  font-weight: 500;
+  color: #e91e63;
+  font-weight: 600;
 }
 
 /* ===== ORDER LIST ===== */
 .orders-section {
   max-width: 900px;
   margin: 40px auto;
-  background-color: #fff;
+  background-color: #ffffff;
   padding: 30px 40px;
-  border-radius: 15px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  border-radius: 18px;
+  box-shadow: 0 8px 22px rgba(233,30,99,0.12);
 }
 
 .orders-section h2 {
   text-align: center;
   font-size: 26px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  color: #7a2d44;
 }
 
-/* CARD */
+/* ===== ORDER CARD ===== */
 .order-card {
-  background-color: #fffaf5;
-  border: 1px solid #e6d6c6;
+  background-color: #fffafc;
+  border: 1px solid #ffd1e4;
   padding: 20px;
-  margin-bottom: 20px;
-  border-radius: 12px;
+  margin-bottom: 22px;
+  border-radius: 16px;
   transition: 0.25s ease;
 }
 
 .order-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 8px 20px rgba(233,30,99,0.15);
 }
 
 .order-header {
   display: flex;
   justify-content: space-between;
   padding-bottom: 10px;
-  border-bottom: 1px solid #e6d6c6;
+  border-bottom: 1px solid #ffe0ee;
   margin-bottom: 15px;
+  font-weight: 600;
+  color: #7a2d44;
 }
 
 .order-body {
@@ -71,233 +74,211 @@ body {
 .order-body img {
   width: 90px;
   height: 90px;
-  border-radius: 10px;
+  border-radius: 14px;
   object-fit: cover;
+  border: 2px solid #ffd6e7;
 }
 
-/* BUTTON */
+/* ===== BUTTON CHUNG ===== */
 .btn {
-  background-color: #d8b6a4;
+  background: linear-gradient(135deg, #ff7abf, #e91e63);
   color: white;
-  padding: 8px 14px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
   border: none;
   cursor: pointer;
   transition: 0.25s;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(233,30,99,0.25);
 }
 .btn:hover {
-  background-color: #c59a86;
+  filter: brightness(1.05);
+  transform: translateY(-2px);
 }
 
 /* ===== STATUS ===== */
-.status-delivered { color: #4caf50; }
-.status-processing { color: #e6a23c; }
-.status-cancelled { color: #e74c3c; }
+.status-delivered   { color: #2ecc71; font-weight: 700; }
+.status-processing  { color: #f39c12; font-weight: 700; }
+.status-cancelled   { color: #e74c3c; font-weight: 700; }
 
-/* ===================================== */
-/* ========== POPUP STYLE NEW ========== */
-/* ===================================== */
-
+/* =========================
+        POPUP CHUNG
+========================= */
 .overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.45);
+
+  /* ✅ ĐỔI DÒNG NÀY */
+  background: rgba(0, 0, 0, 0.35);
+
   justify-content: center;
   align-items: center;
   z-index: 300;
 }
 
-/* ✔ Popup rộng – auto giãn để nội dung nằm ngang */
+
 .popup {
-  background: #fffdfc;
-  max-width: 1000px;      /* mở rộng cho flex */
-  width: 90%;             /* responsive */
+  background: #fff;
+  max-width: 1000px;
+  width: 90%;
   padding: 28px 32px;
-  border-radius: 18px;
+  border-radius: 22px;
   position: relative;
-  box-shadow: 0px 8px 25px rgba(0,0,0,0.15);
+  box-shadow: 0px 12px 35px rgba(233,30,99,0.25);
   animation: fadePopup 0.3s ease;
 }
 
 @keyframes fadePopup {
-  from { transform: scale(0.85); opacity: 0; }
+  from { transform: scale(0.9); opacity: 0; }
   to   { transform: scale(1); opacity: 1; }
 }
 
-/* Title trong popup gốc */
 .popup h3 {
   text-align: center;
   font-size: 22px;
   margin-bottom: 20px;
-  color: #4b3f36;
+  color: #7a2d44;
 }
 
-/* Close button */
+/* Close */
 .close-btn {
   position: absolute;
-  top: 12px;
-  right: 16px;
+  top: 14px;
+  right: 18px;
   cursor: pointer;
   font-size: 22px;
-  color: #b17b68;
-  transition: 0.25s;
+  color: #e91e63;
 }
 .close-btn:hover {
-  color: #d29783;
+  color: #ff4fa3;
 }
 
-/* ✔ Bỏ khung nhốt nội dung – cho phép flex hoạt động */
-.detail-box {
-  padding: 0;
-  background: none;
-  border: none;
-}
-
-/* Nội dung chi tiết đơn được style từ get_orders_detail.css */
+/* ===== DETAIL ===== */
 .detail-box p {
   font-size: 15px;
-  margin: 7px 0;
+  margin: 8px 0;
 }
 
 .detail-box .label {
-  font-weight: 600;
-  color: #c27a64;
+  font-weight: 700;
+  color: #e91e63;
   width: 130px;
   display: inline-block;
 }
 
 .detail-box .value {
-  color: #4b3f36;
+  color: #6b2f44;
   font-weight: 500;
 }
-/* ==========================================
-   POPUP ĐÁNH GIÁ — STYLE ĐẸP NHƯ POPUP CHI TIẾT
-========================================== */
+
+/* =========================
+     POPUP ĐÁNH GIÁ
+========================= */
 .review-popup {
-    background: #fffdfc;
-    max-width: 750px;              /* giống popup chi tiết */
-    width: 92%;
-    padding: 26px 32px;
-    border-radius: 22px;
-    box-shadow: 0px 10px 28px rgba(0,0,0,0.18);
-    animation: fadePopup 0.28s ease;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    max-height: 80vh;              /* để popup khỏi dài quá */
-    overflow: hidden;              /* KHÔNG cho tràn */
+  background: #fff;
+  max-width: 760px;
+  width: 92%;
+  padding: 26px 32px;
+  border-radius: 22px;
+  box-shadow: 0px 14px 36px rgba(233,30,99,0.28);
+  animation: fadePopup 0.28s ease;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
 }
 
 .review-popup h3 {
-    text-align: center;
-    font-size: 22px;
-    font-weight: 600;
-    margin-bottom: 20px;
-    color: #4b3f36;
+  text-align: center;
+  font-size: 22px;
+  margin-bottom: 20px;
+  color: #7a2d44;
 }
 
-/* KHUNG CUỘN BÊN TRONG */
+/* Scroll */
 #reviewContent {
-    overflow-y: auto;
-    max-height: 60vh;              /* phần danh sách sản phẩm được cuộn */
-    padding-right: 10px;
+  overflow-y: auto;
+  max-height: 60vh;
+  padding-right: 10px;
 }
 
-/* Scrollbar đẹp */
 #reviewContent::-webkit-scrollbar {
-    width: 7px;
+  width: 7px;
 }
 #reviewContent::-webkit-scrollbar-thumb {
-    background: #d8b6a4;
-    border-radius: 12px;
+  background: #ff9ecf;
+  border-radius: 12px;
 }
 #reviewContent::-webkit-scrollbar-track {
-    background: #f2e7df;
+  background: #ffe6f2;
 }
 
 /* ITEM */
 .review-item {
-    display: flex;
-    gap: 14px;
-    padding: 14px 0;
-    border-bottom: 1px solid #eee;
-}
-.review-item:last-child {
-    border-bottom: none;
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid #ffe0ee;
 }
 
-/* ẢNH */
 .review-thumb {
-    width: 70px;
-    height: 70px;
-    border-radius: 12px;
-    object-fit: cover;
+  width: 70px;
+  height: 70px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 2px solid #ffd6e7;
 }
 
-/* TÊN + SAO + COMMENT */
-.review-content {
-    flex: 1;
-}
-
-/* SAO */
+/* STAR */
 .stars i {
-    font-size: 20px;
-    color: #d0c7c7;
-    cursor: pointer;
+  font-size: 20px;
+  color: #d9b8c8;
+  cursor: pointer;
 }
 .stars i.active {
-    color: #ffb84d;
+  color: #ffc107;
 }
 
-/* Ô COMMENT */
+/* COMMENT */
 .review-content textarea {
-    width: 100%;
-    margin-top: 6px;
-    padding: 10px 12px;
-    border-radius: 12px;
-    border: 1px solid #e8dcd5;
-    background: #fffaf5;
-    resize: vertical;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #ffd6e7;
+  background: #fff6fa;
 }
 
-/* NÚT GỬI ĐÁNH GIÁ */
+/* SUBMIT REVIEW */
 .submit-review {
-    margin-top: 15px;
-    padding: 12px 16px;
-    background: #d8b6a4;
-    border-radius: 12px;
-    color: white;
-    font-size: 16px;
-    border: none;
-    cursor: pointer;
-    transition: 0.25s;
+  margin-top: 18px;
+  padding: 13px 18px;
+  background: linear-gradient(135deg, #ff7abf, #e91e63);
+  border-radius: 14px;
+  color: white;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(233,30,99,0.3);
 }
 .submit-review:hover {
-    background: #c59a86;
+  filter: brightness(1.05);
+  transform: translateY(-2px);
 }
-/* ============================
-   NÚT "ĐÃ NHẬN HÀNG" – STYLE ĐẸP
-============================= */
+
+/* ===== ĐÃ NHẬN HÀNG ===== */
 .btn-received {
-    background: #b8e3c4;           /* xanh pastel đẹp mắt */
-    color: #2f5d36;
-    border: none;
-    padding: 9px 16px;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: 0.25s ease-in-out;
-
-    box-shadow: 0 3px 7px rgba(0,0,0,0.08);
+  background: linear-gradient(135deg, #9be7c4, #4caf50);
+  color: #1f5f3a;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.25s;
+  box-shadow: 0 4px 10px rgba(76,175,80,0.25);
 }
-
 .btn-received:hover {
-    background: #a2d8b3;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
-    transform: translateY(-2px);
-}
-
-.btn-received:active {
-    transform: scale(0.97);
+  transform: translateY(-2px);
 }

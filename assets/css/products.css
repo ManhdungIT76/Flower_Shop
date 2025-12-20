@@ -6,7 +6,7 @@
 }
 
 body {
-  background-color: #fffaf5;
+  background-color: #fffdfb; /* đồng bộ nền trang */
   color: #4b3f36;
 }
 
@@ -15,39 +15,37 @@ a {
   color: inherit;
 }
 
-/* BANNER NHỎ */
+/* ===== BANNER ===== */
 .banner {
   height: 200px;
   background: url("/background_hoa_27_347d861bc3.jpg") center/cover no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #4b3f36;
-  font-size: 32px;
-  font-weight: 600;
-  background-attachment: fixed;
   position: relative;
+  overflow: hidden;
 }
 
 .banner::after {
   content: "";
   position: absolute;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(255,255,255,0.7);
-  top: 0;
-  left: 0;
+  inset: 0;
+  background: rgba(255, 241, 246, 0.72); /* overlay hồng pastel */
 }
 
 .banner h2 {
   position: relative;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.85);
+  color: #7a2d44;
   padding: 12px 30px;
-  border-radius: 12px;
+  border-radius: 14px;
+  font-size: 32px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgba(233, 30, 99, 0.14);
 }
 
-/* FILTER BAR */
+/* ===== FILTER BAR ===== */
 .filter-bar {
   display: flex;
   justify-content: space-between;
@@ -58,16 +56,23 @@ a {
 }
 
 .filter-bar select {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #e6d6c6;
-  background-color: #fff7f0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #f8bbd0;
+  background-color: #fff1f6;
   font-size: 15px;
-  color: #4b3f36;
+  color: #7a2d44;
   cursor: pointer;
+  outline: none;
+  transition: 0.25s ease;
 }
 
-/* PRODUCT GRID */
+.filter-bar select:focus {
+  border-color: #e91e63;
+  box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.12);
+}
+
+/* ===== PRODUCT GRID ===== */
 section {
   padding: 40px 80px;
 }
@@ -78,50 +83,122 @@ section {
   gap: 25px;
 }
 
+/* Card sản phẩm */
 .product {
-  background-color: #fff7f0;
-  border-radius: 12px;
+  background-color: #fff1f6;
+  border-radius: 14px;
   padding: 20px;
   text-align: center;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.08);
-  transition: transform 0.3s;
+  border: 1px solid #f8bbd0;
+  box-shadow: 0 3px 10px rgba(233, 30, 99, 0.08);
+  transition: all 0.3s ease;
 }
 
 .product:hover {
-  transform: translateY(-5px);
+  transform: translateY(-6px);
+  background-color: #ffe4ef;
+  box-shadow: 0 10px 24px rgba(233, 30, 99, 0.18);
+  border-color: #e91e63;
 }
 
 .product img {
   width: 100%;
-  border-radius: 12px;
+  border-radius: 14px;
   height: 220px;
   object-fit: cover;
   margin-bottom: 12px;
+  transition: transform 0.35s ease;
+}
+
+.product:hover img {
+  transform: scale(1.03);
 }
 
 .product h3 {
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 6px;
+  color: #7a2d44;
 }
 
 .product p {
   color: #7b6d63;
   font-size: 15px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
+/* ===== BUTTON ===== */
 .btn {
-  background-color: #d8b6a4;
-  color: white;
+  background-color: #f8bbd0; /* hồng nhạt */
+  color: #7a2d44;
   border: none;
-  padding: 9px 16px;
-  border-radius: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.25s ease;
   font-size: 15px;
+  font-weight: 600;
+  display: inline-block;
 }
 
 .btn:hover {
-  background-color: #c59a86;
+  background-color: #e91e63; /* màu chính */
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(233, 30, 99, 0.28);
 }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .filter-bar {
+    padding: 20px 25px 0;
+  }
+
+  section {
+    padding: 30px 25px;
+  }
+
+  .banner h2 {
+    font-size: 24px;
+    padding: 10px 18px;
+  }
+}
+/* ===== PRICE RANGE ===== */
+.price-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.price-range label {
+  color: #7a2d44;
+  font-weight: 600;
+}
+
+.price-range input {
+  width: 120px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #f8bbd0;
+  background-color: #fff1f6;
+  font-size: 15px;
+  color: #7a2d44;
+  outline: none;
+  transition: 0.25s ease;
+}
+
+.price-range input:focus {
+  border-color: #e91e63;
+  box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.12);
+}
+
+.price-sep {
+  color: #7a2d44;
+  font-weight: 700;
+}
+
+.price-unit {
+  color: #7a2d44;
+  font-weight: 600;
+}
+

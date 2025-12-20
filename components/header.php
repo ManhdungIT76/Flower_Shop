@@ -13,63 +13,141 @@ if (session_status() === PHP_SESSION_NONE) {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
   <style>
-    /* === GỢI Ý TÌM KIẾM === */
-    .search-box {
-      position: relative;
-    }
+/* ========== SEARCH BOX ========== */
+.search-box{ position:relative; }
 
-    .search-suggest {
-      position: absolute;
-      top: 40px;
-      left: 0;
-      width: 100%;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      max-height: 300px;
-      overflow-y: auto;
-      display: none;
-      z-index: 2000;
-    }
+/* ========== DROPDOWN ========== */
+.search-suggest{
+  position:absolute;
+  top:48px;
+  left:0;
+  width:100%;
+  display:none;
+  z-index:2000;
 
-    .suggest-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px;
-      cursor: pointer;
-      border-bottom: 1px solid #eee;
-      text-decoration: none;
-      color: #333;
-    }
+  background:#fff;
+  border:1px solid #f2c1d1;
+  border-radius:16px;
+  max-height:320px;
+  overflow-y:auto;
+  box-shadow:0 12px 30px rgba(233,30,99,.18);
+}
 
-    .suggest-item:hover {
-      background: #f9f9f9;
-    }
+/* ========== ITEM (PHẢI ĐÁNH ĐÚNG VÀO THẺ <a>) ========== */
+.search-suggest > a.suggest-item{
+  /* thắng .right-nav a */
+  display:grid !important;
+  grid-template-columns: 64px 1fr !important;
+  justify-content:start !important;
+  align-items:center !important;
+  text-align:left !important;
 
-    .suggest-item img {
-      width: 45px;
-      height: 45px;
-      object-fit: cover;
-      border-radius: 6px;
-    }
+  column-gap:12px;
+  padding:12px 14px;
+  border-bottom:1px solid #fde4ec;
+  text-decoration:none;
+  color:#5a2a3c;
+  background:#fff;
+}
 
-    .suggest-info {
-      display: flex;
-      flex-direction: column;
-    }
+.search-suggest > a.suggest-item:last-child{ border-bottom:none; }
 
-    .suggest-info .p-name {
-      font-size: 14px;
-      font-weight: 500;
-    }
+.search-suggest > a.suggest-item:hover{
+  background:#fde4ec;
+  box-shadow: inset 4px 0 0 #e91e63;
+}
 
-    .suggest-info .p-price {
-      font-size: 13px;
-      color: #d2691e;
-      font-weight: 600;
-    }
-  </style>
+/* ========== IMAGE ========== */
+.search-suggest > a.suggest-item img{
+  width:56px !important;
+  height:56px !important;
+  object-fit:cover;
+  border-radius:12px;
+  border:1px solid #f2c1d1;
+  display:block;
+}
+
+/* ========== TEXT WRAP (KHÓA VỊ TRÍ CHỮ + GIÁ) ========== */
+.search-suggest > a.suggest-item .suggest-info{
+  /* khóa layout 2 hàng: tên (2 dòng) + giá (1 dòng) */
+  display:grid !important;
+  grid-template-rows: 36px 18px !important;
+  align-content:start !important;
+  row-gap:2px !important;
+  min-width:0; /* cực quan trọng để ellipsis hoạt động */
+}
+
+/* tên luôn 2 dòng => giá không bao giờ nhảy */
+.search-suggest > a.suggest-item .p-name{
+  font-size:14px;
+  font-weight:700;
+  color:#5a2a3c;
+
+  line-height:18px !important;
+  height:36px !important;
+  margin:0 !important;
+
+  overflow:hidden;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+}
+
+/* giá luôn nằm đúng hàng thứ 2 */
+.search-suggest > a.suggest-item .p-price{
+  font-size:13px;
+  font-weight:700;
+  color:#e91e63;
+
+  line-height:18px !important;
+  height:18px !important;
+  margin:0 !important;
+  white-space:nowrap;
+}
+
+/* ========== SCROLLBAR ========== */
+.search-suggest::-webkit-scrollbar{ width:6px; }
+.search-suggest::-webkit-scrollbar-track{
+  background:#fde4ec;
+  border-radius:10px;
+}
+.search-suggest::-webkit-scrollbar-thumb{
+  background:#f8bbd0;
+  border-radius:10px;
+}
+.search-suggest::-webkit-scrollbar-thumb:hover{ background:#e91e63; }
+/* ===== FIX MÀU CHỮ SEARCH SUGGEST ===== */
+
+/* Tên sản phẩm */
+.search-suggest > a.suggest-item .p-name{
+  color: #4b1630 !important;   /* tím nâu đậm – rất dễ đọc */
+}
+
+/* Giá */
+.search-suggest > a.suggest-item .p-price{
+  color: #e91e63 !important;   /* hồng đậm (primary) */
+}
+
+/* Hover */
+.search-suggest > a.suggest-item:hover .p-name{
+  color: #2d0a1a !important;
+}
+
+.search-suggest > a.suggest-item:hover .p-price{
+  color: #c2185b !important;
+}
+
+/* Active (nếu có dùng phím ↑ ↓ hoặc click) */
+.search-suggest > a.suggest-item.active{
+  background: #fde4ec;
+}
+
+.search-suggest > a.suggest-item.active .p-name,
+.search-suggest > a.suggest-item.active .p-price{
+  color: #2d0a1a !important;
+}
+
+</style>
 
 </head>
 

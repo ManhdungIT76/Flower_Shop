@@ -373,3 +373,177 @@ header {
     width: 200px;
   }
 }
+
+/* Widget tổng */
+#chatbot-widget {
+  position: fixed;
+  bottom: 25px;
+  right: 25px;
+  z-index: 99999;
+  font-family: "Poppins", sans-serif;
+}
+
+/* Icon mở chat */
+#chat-icon {
+  width: 65px;
+  height: 65px;
+  background: linear-gradient(135deg, #ff7acb, #ff9edc);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 30px;
+  cursor: pointer;
+  box-shadow: 0px 12px 30px rgba(255, 120, 185, 0.45);
+  transition: 0.25s ease;
+}
+
+#chat-icon:hover {
+  transform: scale(1.12);
+}
+
+/* Khung chat */
+#chat-window {
+  width: 380px;
+  height: 510px;
+  background: #ffffff;
+  border-radius: 24px;
+  display: none;
+  flex-direction: column;
+  box-shadow: 0px 20px 55px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: fadeUp 0.35s ease-out;
+}
+
+/* Animation khi mở */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Header */
+#chat-header {
+  background: linear-gradient(135deg, #ff6fb4, #ffa8dd);
+  color: white;
+  padding: 15px;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+/* Khung tin nhắn */
+#chat-messages {
+  padding: 18px;
+  height: 370px;
+  overflow-y: auto;
+  background: #fff6fa;
+  scroll-behavior: smooth;
+}
+
+/* Hộp tin nhắn */
+.msg-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Avatar */
+.avatar {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar.user {
+    background-image: url("/assets/images/avatar_user.jpg");
+}
+.avatar.bot {
+    background-image: url("/assets/images/z7128943872304_7000db2b5f7c476efb8c375bf165f8e8.jpg");
+}
+/* Bong bóng chat */
+.message {
+  padding: 12px 16px;
+  border-radius: 18px;
+  max-width: 75%;
+  font-size: 14px;
+  line-height: 1.45;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Tin của user */
+.user-box {
+  justify-content: flex-end;
+}
+.user {
+  background: #ffd2ec;
+  border-bottom-right-radius: 6px;
+  color: #333;
+}
+
+/* Tin của bot */
+.bot-box {
+  justify-content: flex-start;
+}
+.bot {
+  background: #ffffff;
+  border: 1px solid #ffd6ef;
+  color: #444;
+  border-bottom-left-radius: 6px;
+}
+
+/* Ô gõ tin nhắn */
+#chat-input {
+  display: flex;
+  border-top: 1px solid #eee;
+  background: white;
+}
+
+#chat-input input {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  font-size: 15px;
+  outline: none;
+  background: #fff;
+}
+
+#chat-input button {
+  background: #ff73c4;
+  border: none;
+  padding: 0 18px;
+  color: white;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.25s;
+}
+
+#chat-input button:hover {
+  background: #ff56b6;
+}
+
+/* Hiệu ứng bot đang gõ */
+.typing {
+  padding: 10px 14px;
+  background: #fff;
+  border-radius: 12px;
+  width: 50px;
+  border: 1px solid #f3cbe6;
+  text-align: center;
+  font-size: 20px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}

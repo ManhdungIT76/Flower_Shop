@@ -3,7 +3,6 @@ from flask_cors import CORS
 import mysql.connector
 from contextlib import closing
 import pandas as pd
-from mlxtend.frequent_patterns import apriori, association_rules
 from sklearn.metrics.pairwise import cosine_similarity
 
 app = Flask(__name__)
@@ -176,12 +175,12 @@ def nguoidung():
         return jsonify({"error": str(e)}), 500
 
 
-
 # =========================================
-#  BUILD SIMILARITY CACHE
+#  BUILD ITEM-ITEM SIMILARITY CACHE
 # =========================================
 product_similarity_cache = None
 product_index_list = None
+
 
 def build_similarity_matrix():
     global product_similarity_cache, product_index_list
@@ -190,21 +189,25 @@ def build_similarity_matrix():
         df = pd.read_sql("SELECT order_id, product_id FROM order_details", conn)
 
     if df.empty:
-        print("⚠ Không có dữ liệu order_details")
+        product_similarity_cache = None
+        product_index_list = None
         return
+
+    df["order_id"] = df["order_id"].astype(str).str.strip()
+    df["product_id"] = df["product_id"].astype(str).str.strip()
 
     basket = df.pivot_table(
         index="order_id",
         columns="product_id",
         aggfunc=len,
         fill_value=0
-    ).applymap(lambda x: 1 if x > 0 else 0)
-
-    print("✔ Pivot done:", basket.shape)
+    )
+    # nhị phân hóa
+    basket = (basket > 0).astype(int)
 
     product_index_list = basket.columns.tolist()
 
-    sim = cosine_similarity(basket.T)
+    sim = cosine_similarity(basket.T.values)
 
     product_similarity_cache = pd.DataFrame(
         sim,
@@ -212,60 +215,213 @@ def build_similarity_matrix():
         columns=product_index_list
     )
 
-    print("✔ Similarity matrix built:", product_similarity_cache.shape)
 
-
-def init_model():
-    print("🔄 Building product similarity model (string IDs)...")
-    build_similarity_matrix()
-    print("⭐ Model ready!")
-
-
-# =========================================
-#  HÀM RECOMMEND
-# =========================================
-def recommend_product(product_id, top_n=4):
+def recommend_product(product_id, top_n=10):
     if product_similarity_cache is None:
         return []
-
+    product_id = str(product_id).strip()
     if product_id not in product_similarity_cache.index:
         return []
 
-    sim_scores = product_similarity_cache.loc[product_id]
-    sim_scores = sim_scores.drop(product_id).sort_values(ascending=False)
-
+    sim_scores = product_similarity_cache.loc[product_id].drop(labels=[product_id], errors="ignore")
+    sim_scores = sim_scores.sort_values(ascending=False)
     return sim_scores.head(top_n).index.tolist()
 
 
-# =========================================
-#  API FLASK
-# =========================================
 @app.route("/api/recommend")
 def api_recommend():
     product_id = request.args.get("product_id")
-
     if not product_id:
         return jsonify({"error": "Missing product_id"}), 400
 
-    top_ids = recommend_product(product_id, 4)
-
+    top_ids = recommend_product(product_id, 10)
     if not top_ids:
         return jsonify([])
 
-    ids_str = ",".join(f"'{pid}'" for pid in top_ids)
+    placeholders = ",".join(["%s"] * len(top_ids))
+
+    with closing(get_db_connection()) as conn, closing(conn.cursor(dictionary=True)) as cur:
+        cur.execute(f"SELECT * FROM products WHERE product_id IN ({placeholders})", top_ids)
+        rows = cur.fetchall()
+
+    m = {r["product_id"]: r for r in rows}
+    ordered = [m[i] for i in top_ids if i in m]
+    return jsonify(ordered)
+
+
+# =========================================
+#  BUILD USER-ITEM CF CACHE (user-based)
+# =========================================
+user_item_matrix = None        # DataFrame: user_id x product_id (quantity)
+user_similarity_cache = None   # DataFrame: user_id x user_id
+
+
+def build_user_similarity_matrix():
+    global user_item_matrix, user_similarity_cache
 
     with closing(get_db_connection()) as conn:
-        sql = f"SELECT * FROM products WHERE product_id IN ({ids_str})"
-        df = pd.read_sql(sql, conn)
+        df = pd.read_sql("""
+            SELECT o.user_id, od.product_id, od.quantity
+            FROM orders o
+            JOIN order_details od ON o.order_id = od.order_id
+        """, conn)
 
-    return jsonify(df.to_dict(orient="records"))
+    if df.empty:
+        user_item_matrix = None
+        user_similarity_cache = None
+        return
+
+    df["user_id"] = df["user_id"].astype(str).str.strip()
+    df["product_id"] = df["product_id"].astype(str).str.strip()
+
+    user_item_matrix = df.pivot_table(
+        index="user_id",
+        columns="product_id",
+        values="quantity",
+        aggfunc="sum",
+        fill_value=0
+    )
+
+    # (Tuỳ chọn) giảm ảnh hưởng heavy buyers:
+    # user_item_matrix = (user_item_matrix > 0).astype(int)   # binary
+    # hoặc:
+    # user_item_matrix = np.log1p(user_item_matrix)           # cần import numpy as np
+
+    sim = cosine_similarity(user_item_matrix.values)
+
+    user_similarity_cache = pd.DataFrame(
+        sim,
+        index=user_item_matrix.index,
+        columns=user_item_matrix.index
+    )
 
 
+def _parse_csv(s):
+    if not s:
+        return []
+    return [x.strip() for x in s.split(",") if x.strip()]
+
+
+def recommend_user_cf(user_id, top_n=10, exclude=None, top_k_neighbors=5, sim_threshold=0.0):
+    """
+    user-based CF (Top-K neighbors):
+    - Chỉ lấy top_k_neighbors user giống nhất (mặc định 2)
+    - score(item) = Σ_{v in topK} sim(u,v) * qty(v,item)
+    - normalize theo tổng |sim| để ổn định
+    - loại bỏ item đã mua + exclude
+    - lọc score > 0
+    """
+    if user_item_matrix is None or user_similarity_cache is None:
+        return []
+
+    user_id = str(user_id).strip()
+    if user_id not in user_item_matrix.index:
+        return []
+
+    exclude_set = set(exclude or [])
+
+    # similarity vector (bỏ chính nó)
+    sim_vec = user_similarity_cache.loc[user_id].drop(index=user_id, errors="ignore").copy()
+
+    # align theo index user_item_matrix
+    sim_vec = sim_vec.reindex(user_item_matrix.index.drop(user_id, errors="ignore")).fillna(0.0)
+
+    # lọc theo ngưỡng nếu cần
+    if sim_threshold > 0:
+        sim_vec = sim_vec[sim_vec >= sim_threshold]
+
+    if sim_vec.empty:
+        return []
+
+    # lấy TOP-K neighbors
+    sim_top = sim_vec.sort_values(ascending=False).head(int(top_k_neighbors))
+    if sim_top.empty:
+        return []
+
+    neighbor_uim = user_item_matrix.loc[sim_top.index]
+
+    # tính score theo topK
+    scores_arr = neighbor_uim.T.values @ sim_top.values
+    scores = pd.Series(scores_arr, index=neighbor_uim.columns)
+
+    # normalize theo tổng similarity
+    den = float(abs(sim_top.values).sum())
+    if den > 0:
+        scores = scores / den
+
+    # remove already bought + exclude
+    user_items = user_item_matrix.loc[user_id]
+    already_bought = set(user_items[user_items > 0].index.tolist())
+
+    drop_ids = already_bought | exclude_set
+    scores = scores.drop(labels=list(drop_ids), errors="ignore")
+
+    # lọc điểm dương để tránh trả về item 0 điểm
+    scores = scores[scores > 0]
+
+    top_ids = scores.sort_values(ascending=False).head(top_n).index.tolist()
+    return top_ids
+
+
+@app.route("/api/recommend/user")
+def api_recommend_user():
+    user_id = (request.args.get("user_id") or "").strip()
+    limit = request.args.get("limit", "10")
+    exclude_str = (request.args.get("exclude") or "").strip()
+
+    # NEW: cho phép chỉnh topK neighbors + threshold qua query (không bắt buộc)
+    topk = request.args.get("topk", "5")
+    thr = request.args.get("thr", "0")   # similarity threshold
+
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 4
+
+    try:
+        topk = int(topk)
+    except Exception:
+        topk = 5
+
+    try:
+        thr = float(thr)
+    except Exception:
+        thr = 0.0
+
+    exclude_ids = _parse_csv(exclude_str)
+
+    top_ids = recommend_user_cf(
+        user_id,
+        top_n=limit,
+        exclude=exclude_ids,
+        top_k_neighbors=topk,
+        sim_threshold=thr
+    )
+    if not top_ids:
+        return jsonify([])
+
+    placeholders = ",".join(["%s"] * len(top_ids))
+
+    with closing(get_db_connection()) as conn, closing(conn.cursor(dictionary=True)) as cur:
+        cur.execute(f"SELECT * FROM products WHERE product_id IN ({placeholders})", top_ids)
+        rows = cur.fetchall()
+
+    m = {r["product_id"]: r for r in rows}
+    ordered = [m[i] for i in top_ids if i in m]
+    return jsonify(ordered)
+
+# =========================================
+#  INIT MODEL
+# =========================================
+def init_model():
+    build_similarity_matrix()
+    build_user_similarity_matrix()
 # =========================================
 #  START SERVER
 # =========================================
 if __name__ == "__main__":
-    # Build model BEFORE running Flask (fix cho Flask 3.x)
     init_model()
-
     app.run(host="0.0.0.0", port=5000, debug=True)
