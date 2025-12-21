@@ -38,10 +38,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout_cod'])) {
             UPDATE orders 
             SET total_amount=?, payment_method_id='TT001', 
                 delivery_method_id=?, payment_status='Chưa thanh toán', 
-                status='Chờ xác nhận', note=? 
+                status='Chờ xác nhận', note=?, shipping_address=?
             WHERE order_id=? AND user_id=?
         ");
-        $upd->bind_param("dssss", $total, $delivery_method_id, $note, $existing_order_id, $user_id);
+        $upd->bind_param("dssssss",
+            $total,
+            $delivery_method_id,
+            $note,
+            $address,
+            $existing_order_id,
+            $user_id
+        );
         $upd->execute();
 
         $u2 = $conn->prepare("
@@ -86,16 +93,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout_cod'])) {
     // Tạo đơn hàng
     $stmt = $conn->prepare("
         INSERT INTO orders 
-        (user_id, total_amount, payment_method_id, delivery_method_id, payment_status, status, note)
-        VALUES (?, ?, ?, ?, 'Chưa thanh toán', 'Chờ xác nhận', ?)
+        (user_id, total_amount, payment_method_id, delivery_method_id, payment_status, status, note, shipping_address)
+        VALUES (?, ?, ?, ?, 'Chưa thanh toán', 'Chờ xác nhận', ?, ?)
     ");
 
-    $stmt->bind_param("sdsss",
+    $stmt->bind_param("sdssss",
         $user_id,
         $total,
         $payment_method_id,
         $delivery_method_id,
-        $note
+        $note,
+        $address
     );
 
     if (!$stmt->execute()) {
@@ -286,11 +294,28 @@ $userInfo = $u->get_result()->fetch_assoc();
 
 <p id="deliveryFeeText">Phí giao hàng: <strong>20.000 đ</strong></p>
 
-<h4>Tổng thanh toán:</h4>
-<p id="totalPayText"><strong>0 đ</strong></p>
-
 <h4>Sản phẩm thanh toán</h4>
-<table id="selectedProducts"></table>
+<table id="selectedProducts">
+    <thead>
+        <tr>
+            <th>Tên</th>
+            <th>SL</th>
+            <th style="text-align:right;">Tiền</th>
+        </tr>
+    </thead>
+    <tbody id="productRows"></tbody>
+    <tfoot>
+        <tr class="fee-row">
+            <td colspan="2"><strong>Phí giao hàng</strong></td>
+            <td id="deliveryFeeCell" style="text-align:right;"><strong>0 đ</strong></td>
+        </tr>
+        <tr class="total-row">
+            <td colspan="2"><strong>Tổng thanh toán</strong></td>
+            <td id="totalPayCell" style="text-align:right;"><strong>0 đ</strong></td>
+        </tr>
+    </tfoot>
+</table>
+
 
 <h4>Hình thức thanh toán</h4>
 <div class="method-options">
@@ -331,8 +356,8 @@ function openPopup() {
     <?php endif; ?>
 
     let items = [];
-    let table = document.getElementById("selectedProducts");
-    table.innerHTML = "<tr><th>Tên</th><th>SL</th><th>Tiền</th></tr>";
+    let tbody = document.getElementById("productRows");
+    tbody.innerHTML = "";
 
     document.querySelectorAll("#cartTable tbody tr").forEach(row => {
         let name  = row.children[1].innerText;
@@ -341,21 +366,17 @@ function openPopup() {
         let total = unit * qty;
         let id    = row.dataset.productId;
 
-        items.push({
-            id: id,
-            name: name,
-            qty: qty,
-            price: unit
-        });
+        items.push({ id, name, qty, price: unit });
 
-        table.innerHTML += `
+        tbody.innerHTML += `
             <tr>
                 <td>${name}</td>
                 <td>${qty}</td>
-                <td>${total.toLocaleString()} đ</td>
+                <td style="text-align:right;">${total.toLocaleString()} đ</td>
             </tr>
         `;
     });
+
 
     document.getElementById("orderItems").value = JSON.stringify(items);
 
@@ -401,13 +422,15 @@ function updateDeliveryFee() {
 
     let total = subtotal + fee;
 
-    document.getElementById("deliveryFee").value = fee;
+    document.getElementById("deliveryFeeCell").innerHTML =
+    "<strong>" + fee.toLocaleString() + " đ</strong>";
 
     document.getElementById("deliveryFeeText").innerHTML =
         "Phí giao hàng: <strong>" + fee.toLocaleString() + " đ</strong>";
 
-    document.getElementById("totalPayText").innerHTML =
-        "<strong>" + total.toLocaleString() + " đ</strong>";
+    document.getElementById("totalPayCell").innerHTML =
+    "<strong>" + total.toLocaleString() + " đ</strong>";
+
 }
 
 /* =============================

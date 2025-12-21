@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/../include/admin_gate.php';
+forbid_admin_buying();
 session_start();
 include '../include/db_connect.php';
 

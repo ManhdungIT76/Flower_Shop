@@ -204,6 +204,90 @@ a {
   font-size: 15px;
 }
 
+/* ================= PRODUCT REVIEWS (CLEAN UI) ================= */
+.product-reviews {
+  max-width: 1100px;
+  margin: 40px auto 0;
+  padding: 28px 24px 32px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 14px 40px rgba(233, 30, 99, 0.12);
+}
+
+/* tiêu đề */
+.product-reviews h3 {
+  margin: 0 0 22px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #8a1538;
+  letter-spacing: 0.3px;
+}
+
+/* mỗi review */
+.review-item {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #fff7fb;
+  border: 1px solid #fde1ec;
+  margin-bottom: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.review-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(233, 30, 99, 0.15);
+}
+
+/* hàng trên: user + sao */
+.review-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: #4b1630;
+  margin-bottom: 6px;
+}
+
+/* avatar giả */
+.review-user::before {
+  content: "👤";
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffd2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* sao đánh giá */
+.review-stars {
+  color: #f6b400;
+  font-size: 15px;
+  margin-left: auto;
+}
+
+/* nội dung */
+.review-content {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #5a2a3c;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px dashed #f3c1d8;
+}
+
+/* nếu chưa có review */
+.product-reviews .empty {
+  text-align: center;
+  color: #9c5b74;
+  font-style: italic;
+  padding: 20px 0;
+}
+
 /* ================= POPUP ================= */
 .popup {
   position: fixed;
@@ -293,5 +377,22 @@ a {
   .related,
   .recommend {
     padding: 30px 20px;
+  }
+
+  .product-reviews {
+    margin: 24px 12px 0;
+    padding: 20px 16px 24px;
+  }
+
+  .product-reviews h3 {
+    font-size: 20px;
+  }
+
+  .review-item {
+    padding: 14px;
+  }
+
+  .review-content {
+    font-size: 14px;
   }
 }

@@ -3,12 +3,21 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #fdf2ec;
+  background-color: #e91e63; /* ✅ màu header */
   padding: 14px 70px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
   position: sticky;
   top: 0;
   z-index: 1000;
+  color: #ffffff; /* ✅ màu chữ mặc định */
+}
+/* ✅ Ép toàn bộ text/link/icon trong header thành trắng */
+header,
+header a,
+header span,
+header i,
+header h1 {
+  color: #ffffff !important;
 }
 
 /* ===== LOGO + TÊN THƯƠNG HIỆU ===== */
@@ -165,16 +174,16 @@ nav ul li a:hover::after {
 }
 
 .user-btn {
-  background-color: #f8eae5;
-  color: #4b2e1e;
-  border: none;
-  padding: 8px 15px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  background-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .user-btn i {
@@ -197,7 +206,7 @@ nav ul li a:hover::after {
 
 .dropdown a {
   display: block;
-  color: #4b2e1e;
+  color: #4b2e1e !important;
   padding: 10px 15px;
   text-decoration: none;
   font-weight: 500;
@@ -211,13 +220,13 @@ nav ul li a:hover::after {
 .dropdown.show {
   display: block;
 }
-/* ===== FOOTER ===== */
+/* ===== FOOTER (PINK THEME – MATCH HEADER) ===== */
 footer {
-  background-color: #fff8f4;
-  color: #4b3f36;
+  background-color: #e91e63; /* 🎯 cùng màu header */
+  color: #ffffff;
   padding: 60px 0 25px;
   margin-top: 80px;
-  border-top: 2px solid #f3d6c7;
+  border-top: none;
 }
 
 /* Giới hạn chiều rộng và căn giữa nội dung */
@@ -231,6 +240,7 @@ footer {
   text-align: center;
 }
 
+/* Các cột footer */
 .footer-about,
 .footer-contact,
 .footer-social {
@@ -238,27 +248,24 @@ footer {
   min-width: 260px;
 }
 
-.footer-about h3 {
-  font-size: 22px;
+/* Tiêu đề */
+.footer-about h3,
+.footer-contact h4,
+.footer-social h4 {
+  color: #ffffff;
+  font-size: 20px;
   font-weight: 700;
   margin-bottom: 12px;
 }
 
+/* Nội dung */
 .footer-about p {
-  color: #7b6d63;
+  color: #ffe4ef;
   font-size: 15px;
   line-height: 1.6;
 }
 
 /* Liên hệ */
-.footer-contact h4,
-.footer-social h4 {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #4b3f36;
-}
-
 .footer-contact ul {
   list-style: none;
   padding: 0;
@@ -266,7 +273,7 @@ footer {
 
 .footer-contact li {
   font-size: 15px;
-  color: #6c5c55;
+  color: #ffffff;
   margin-bottom: 8px;
   display: flex;
   align-items: center;
@@ -275,7 +282,8 @@ footer {
 }
 
 .footer-contact i {
-  color: #f1a791;
+  color: #ffffff;
+  opacity: 0.9;
 }
 
 /* Icon mạng xã hội */
@@ -287,36 +295,81 @@ footer {
 }
 
 .social-icons a {
-  background-color: #f8e2da;
-  color: #4b3f36;
   font-size: 16px;
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.3s;
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+.social-icons a.facebook {
+  background-color: #1877f2; /* Facebook Blue */
 }
 
 .social-icons a:hover {
-  background-color: #f1a791;
-  color: white;
+  background-color: #ffffff;
+  color: #e91e63;
   transform: translateY(-3px);
+}
+/* Instagram (gradient chuẩn) */
+.social-icons a.instagram {
+  background: radial-gradient(
+    circle at 30% 107%,
+    #fdf497 0%,
+    #fdf497 5%,
+    #fd5949 45%,
+    #d6249f 60%,
+    #285aeb 90%
+  );
+}
+/* TikTok */
+.social-icons a.tiktok {
+  background-color: #000000; /* TikTok Black */
+}
+
+/* Hover chung */
+.social-icons a:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 /* Dòng cuối */
 .footer-bottom {
   text-align: center;
-  border-top: 1px solid #efd4c6;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
   padding-top: 18px;
   font-size: 14px;
-  color: #7b6d63;
+  color: #ffe4ef;
   margin-top: 30px;
 }
 
 .footer-bottom strong {
-  color: #4b3f36;
+  color: #ffffff;
+}
+
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    gap: 15px;
+    padding: 12px 25px;
+  }
+
+  nav ul {
+    gap: 25px;
+  }
+
+  .right-nav {
+    gap: 18px;
+  }
+
+  .search-box input {
+    width: 200px;
+  }
 }
 header {
   position: sticky;
@@ -546,4 +599,152 @@ header {
 @keyframes blink {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+/* ===== CHANGE PASSWORD MODAL ===== */
+.cp-modal{ display:none; position:fixed; inset:0; z-index:9999; }
+.cp-modal.show{ display:block; }
+
+.cp-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.35); }
+
+.cp-dialog{
+  position:relative;
+  width:min(520px, calc(100% - 24px));
+  margin:80px auto 0;
+  background:#fff;
+  border:1px solid #f2c1d1;
+  border-radius:18px;
+  box-shadow:0 18px 60px rgba(0,0,0,.22);
+  overflow:hidden;
+}
+
+.cp-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px;
+  border-bottom:1px solid #fde4ec;
+}
+
+.cp-head h3{ margin:0; font-size:18px; color:#4b1630; }
+
+.cp-close{
+  border:none; background:transparent; cursor:pointer;
+  font-size:18px; line-height:1;
+}
+
+.cp-body{ padding:14px 16px 16px; }
+
+.cp-row{ display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+.cp-row label{ font-size:14px; color:#5a2a3c; font-weight:600; }
+.cp-row input{
+  padding:12px 12px;
+  border:1px solid #f2c1d1;
+  border-radius:12px;
+  outline:none;
+}
+
+.cp-submit{
+  width:100%;
+  margin-top:10px;
+  padding:12px 14px;
+  border:none;
+  border-radius:12px;
+  cursor:pointer;
+  background:#e91e63;
+  color:#fff;
+  font-weight:700;
+}
+
+.cp-alert{
+  padding:10px 12px;
+  border-radius:12px;
+  margin-bottom:10px;
+  font-size:14px;
+}
+.cp-alert.ok{ background:#e8f5e9; border:1px solid #a5d6a7; }
+.cp-alert.bad{ background:#ffebee; border:1px solid #ef9a9a; }
+/* ===========================
+   FLOATING CHAT ICONS (ALIGN)
+   Messenger: .chat-fab
+   Chatbot : #chatbot-widget #chat-icon
+   =========================== */
+
+/* 1) Đồng bộ kích thước + style chung */
+.chat-fab,
+#chatbot-widget #chat-icon{
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: 0 10px 24px rgba(0,0,0,.18);
+  transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+
+/* icon bên trong */
+.chat-fab i,
+#chatbot-widget #chat-icon i{
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* 2) Căn thẳng hàng theo 1 trục bên phải, tạo khoảng cách đều */
+.chat-fab{
+  right: 24px;
+  bottom: 104px;         /* icon trên */
+  z-index: 99990;
+}
+
+#chatbot-widget{
+  right: 24px;
+  bottom: 24px;          /* icon dưới */
+  z-index: 99991;
+}
+
+/* 3) Màu giữ nguyên theo từng cái (Messenger xanh, Chatbot gradient) */
+.chat-fab{
+  background: #0084ff;
+  color: #fff;
+}
+
+#chatbot-widget #chat-icon{
+  background: linear-gradient(135deg, #ff7acb, #ff9edc);
+  color: #fff;
+}
+
+/* 4) Hover đồng bộ */
+.chat-fab:hover,
+#chatbot-widget #chat-icon:hover{
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 14px 34px rgba(0,0,0,.22);
+  filter: brightness(0.98);
+}
+
+/* 5) Khi mở chat-window: đẩy khung chat lên để không che 2 icon */
+#chatbot-widget #chat-window{
+  margin-bottom: 12px;
+}
+
+/* 6) Mobile: giảm size + nén khoảng cách để không che nội dung */
+@media (max-width: 768px){
+  .chat-fab,
+  #chatbot-widget #chat-icon{
+    width: 52px;
+    height: 52px;
+  }
+
+  .chat-fab{
+    right: 16px;
+    bottom: 92px;
+  }
+
+  #chatbot-widget{
+    right: 16px;
+    bottom: 16px;
+  }
+
+  #chat-window{
+    width: min(360px, calc(100vw - 24px));
+    height: 480px;
+  }
 }

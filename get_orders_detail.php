@@ -9,7 +9,10 @@ $user_id = $_SESSION['user']['id'];
 $order_id = $_GET['id'];
 
 // LẤY THÔNG TIN ĐƠN
-$sql = "SELECT o.*, pm.method_name AS payment_method, dm.method_name AS delivery_method
+$sql = "SELECT 
+            o.*,
+            pm.method_name AS payment_method,
+            dm.method_name AS delivery_method
         FROM orders o
         LEFT JOIN payment_methods pm ON o.payment_method_id = pm.payment_method_id
         LEFT JOIN delivery_methods dm ON o.delivery_method_id = dm.delivery_method_id
@@ -117,7 +120,9 @@ if (!empty($order['status']) && $order['status'] === 'Đã giao') {
         <p><span class="label">Ghi chú:</span>
             <?= $order['note'] ? htmlspecialchars($order['note']) : '—' ?>
         </p>
-
+        <p><span class="label">Địa chỉ nhận:</span>
+            <?= !empty($order['shipping_address']) ? htmlspecialchars($order['shipping_address']) : '—' ?>
+        </p>
         <p><span class="label">Thanh toán:</span>
             <?= $order['payment_method'] ?> (<?= $paymentStatus ?>)
         </p>

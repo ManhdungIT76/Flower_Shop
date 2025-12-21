@@ -388,10 +388,17 @@ if (count($recommend_products) < $limit && $isFrequentUser && $user_id) {
 
         const quantity = quantityInput.value || 1;
         fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
-            .then(response => response.text())
-            .then(() => {
-                window.location.href = "cart.php";
-            });
+        .then(res => {
+            if (res.status === 403) {
+            alert('Tài khoản admin không được phép mua hàng.');
+            return null;
+            }
+            return res.text();
+        })
+        .then(data => {
+            if (data === null) return;
+            window.location.href = "cart.php";
+        });
     });
 
     confirmNo.addEventListener("click", () => {
@@ -404,10 +411,17 @@ if (count($recommend_products) < $limit && $isFrequentUser && $user_id) {
         confirmPopup.style.display = "none";
 
         fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
-            .then(response => response.text())
-            .then(() => {
-                successPopup.style.display = "flex";
-            });
+        .then(res => {
+            if (res.status === 403) {
+            alert('Tài khoản admin không được phép mua hàng.');
+            return null;
+            }
+            return res.text();
+        })
+        .then(data => {
+            if (data === null) return;
+            successPopup.style.display = "flex";
+        });
     });
 
     successOk.addEventListener("click", () => {

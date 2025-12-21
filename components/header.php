@@ -116,6 +116,7 @@ if (session_status() === PHP_SESSION_NONE) {
   border-radius:10px;
 }
 .search-suggest::-webkit-scrollbar-thumb:hover{ background:#e91e63; }
+
 /* ===== FIX MÀU CHỮ SEARCH SUGGEST ===== */
 
 /* Tên sản phẩm */
@@ -147,13 +148,36 @@ if (session_status() === PHP_SESSION_NONE) {
   color: #2d0a1a !important;
 }
 
-</style>
+/* ===== TOAST SUCCESS ===== */
+.toast-success{
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
 
+  background: #e8f5e9;
+  color: #1b5e20;
+  border: 1px solid #a5d6a7;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-weight: 600;
+
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all .3s ease;
+  pointer-events: none;
+}
+
+.toast-success.show{
+  opacity: 1;
+  transform: translateY(0);
+}
+  </style>
 </head>
 
 <body>
-<header>
 
+<header>
   <!-- LEFT NAV -->
   <div class="left-nav">
     <div class="logo">
@@ -178,7 +202,6 @@ if (session_status() === PHP_SESSION_NONE) {
     <form action="products.php" method="GET" class="search-box" autocomplete="off">
       <input type="text" name="search" id="searchInput" placeholder="Tìm kiếm hoa...">
       <button type="submit"><i class="fa-solid fa-magnifying-glass"></i></button>
-
       <div class="search-suggest" id="searchSuggest"></div>
     </form>
 
@@ -199,6 +222,7 @@ if (session_status() === PHP_SESSION_NONE) {
           <?php endif; ?>
 
           <a href="review_history.php">⭐ Lịch sử đánh giá</a>
+          <a href="#" id="openChangePass">🔒 Đổi mật khẩu</a>
           <a href="logout.php">🚪 Đăng xuất</a>
         </div>
       </div>
@@ -215,9 +239,47 @@ if (session_status() === PHP_SESSION_NONE) {
     </a>
 
   </div>
-
 </header>
 
+<!-- TOAST -->
+<div id="toastSuccess" class="toast-success">
+  🔒 Đổi mật khẩu thành công
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="cp-modal" id="cpModal" aria-hidden="true">
+  <div class="cp-backdrop" id="cpBackdrop"></div>
+
+  <div class="cp-dialog" role="dialog" aria-modal="true" aria-labelledby="cpTitle">
+    <div class="cp-head">
+      <h3 id="cpTitle">Đổi mật khẩu</h3>
+      <button type="button" class="cp-close" id="cpCloseBtn">✕</button>
+    </div>
+
+    <div class="cp-body">
+      <div class="cp-alert" id="cpAlert" style="display:none;"></div>
+
+      <form id="cpForm" autocomplete="off">
+        <div class="cp-row">
+          <label>Mật khẩu hiện tại</label>
+          <input type="password" name="old_password" required>
+        </div>
+
+        <div class="cp-row">
+          <label>Mật khẩu mới</label>
+          <input type="password" name="new_password" required>
+        </div>
+
+        <div class="cp-row">
+          <label>Nhập lại mật khẩu mới</label>
+          <input type="password" name="confirm_password" required>
+        </div>
+
+        <button type="submit" class="cp-submit">Cập nhật</button>
+      </form>
+    </div>
+  </div>
+</div>
 
 <!-- DROPDOWN JS -->
 <script>
@@ -273,6 +335,93 @@ document.addEventListener("DOMContentLoaded", () => {
           suggestBox.style.display = "none";
         }
       });
+  });
+});
+</script>
+
+<!-- CHANGE PASSWORD MODAL JS -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const openBtn = document.getElementById("openChangePass");
+  const modal = document.getElementById("cpModal");
+  const backdrop = document.getElementById("cpBackdrop");
+  const closeBtn = document.getElementById("cpCloseBtn");
+  const form = document.getElementById("cpForm");
+  const alertBox = document.getElementById("cpAlert");
+
+  function showAlert(type, text){
+    alertBox.className = "cp-alert " + (type === "ok" ? "ok" : "bad");
+    alertBox.textContent = text;
+    alertBox.style.display = "block";
+  }
+
+  function openModal(){
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+    alertBox.style.display = "none";
+    form.reset();
+  }
+
+  function closeModal(){
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  if (openBtn) {
+    openBtn.addEventListener("click", function(e){
+      e.preventDefault();
+      openModal();
+    });
+  }
+
+  backdrop.addEventListener("click", closeModal);
+  closeBtn.addEventListener("click", closeModal);
+
+  document.addEventListener("keydown", function(e){
+    if (e.key === "Escape" && modal.classList.contains("show")) closeModal();
+  });
+
+  form.addEventListener("submit", async function(e){
+    e.preventDefault();
+
+    const fd = new FormData(form);
+
+    try {
+      const res = await fetch("components/change_password_action.php", {
+        method: "POST",
+        body: fd
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        showAlert("ok", data.message || "Đổi mật khẩu thành công.");
+        form.reset();
+
+        const toast = document.getElementById("toastSuccess");
+
+        // đóng popup
+        setTimeout(() => {
+          modal.classList.remove("show");
+          modal.setAttribute("aria-hidden", "true");
+        }, 800);
+
+        // hiện toast
+        setTimeout(() => {
+          toast.classList.add("show");
+        }, 900);
+
+        // ẩn toast sau 2.5s
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 3500);
+
+      } else {
+        showAlert("bad", data.message || "Đổi mật khẩu thất bại.");
+      }
+
+    } catch (err) {
+      showAlert("bad", "Lỗi kết nối.");
+    }
   });
 });
 </script>

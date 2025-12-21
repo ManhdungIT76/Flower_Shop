@@ -352,9 +352,20 @@ $all_categories_result = mysqli_query($conn, $all_categories_sql);
 
 <?php include 'components/header.php'; ?>
 
-<div class="banner">
-  <h2>Trao gửi yêu thương qua từng đóa hoa 💐</h2>
-</div>
+<section class="hero-slider">
+  <div class="hero-track">
+    <div class="hero-slide" style="background-image:url('assets/images/anh1.jpg')"></div>
+    <div class="hero-slide" style="background-image:url('assets/images/anh2.jpg')"></div>
+    <div class="hero-slide" style="background-image:url('assets/images/anh3.jpg')"></div>
+    <div class="hero-slide" style="background-image:url('assets/images/anh4.jpg')"></div>
+    <div class="hero-slide" style="background-image:url('assets/images/anh5.jpg')"></div>
+  </div>
+
+  <div class="hero-overlay">
+    <h2>Trao gửi yêu thương qua từng đóa hoa 💐</h2>
+    <a href="products.php" class="hero-btn">Xem sản phẩm</a>
+  </div>
+</section>
 
 <section>
   <h2 class="section-title">Danh mục được yêu thích</h2>

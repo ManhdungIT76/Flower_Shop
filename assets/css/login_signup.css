@@ -1,177 +1,191 @@
+/* =========================
+   LOGIN/SIGNUP (MATCH THEME #e91e63)
+   Fix: lòi khung + đồng bộ màu web
+   ========================= */
+
 /* FIX TOÀN BỘ LỖI LÒI KHUNG */
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 /* ===== TRANG LOGIN / SIGNUP ===== */
-.auth-page {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - 90px);
-  background-color: #fffdfb;
-  padding: 40px 20px;
-  position: relative;
-  overflow: hidden;
-  z-index: 0;
+.auth-page{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;              /* FIX: không bị hụt chiều cao do header khác trang */
+  background:#fffdfb;
+  padding:40px 20px;
+  position:relative;
+  overflow:hidden;
+  z-index:0;
 }
 
-/* ===== VÒNG PASTEL MỀM ===== */
-.auth-page::before {
-  content: "";
-  position: absolute;
-  width: 520px;
-  height: 520px;
-  border-radius: 50%;
+/* ===== VÒNG PASTEL MỀM (hồng chủ đạo) ===== */
+.auth-page::before{
+  content:"";
+  position:absolute;
+  width:520px;
+  height:520px;
+  border-radius:50%;
   background: radial-gradient(
     circle,
-    rgba(241, 167, 145, 0.30) 0%,
-    rgba(255, 255, 255, 0) 72%
+    rgba(233,30,99,.18) 0%,
+    rgba(255,255,255,0) 72%
   );
-  top: 52%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: -1;
-  pointer-events: none;
-  filter: blur(3px);
+  top:52%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  z-index:-1;
+  pointer-events:none;
+  filter:blur(3px);
 }
 
 /* ===== KHUNG FORM ===== */
-.auth-container {
-  background: #fffaf7;
-  border-radius: 20px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
-  padding: 40px 45px;
-  max-width: 380px;
-  width: 100%;
-  text-align: center;
-  border: 1.4px solid #f6e3dc;
-  transition: all 0.3s ease;
+.auth-container{
+  width: min(420px, 100%);
+  background:#fffaf7;
+  border-radius:22px;
+  padding:36px 34px;
+
+  border:1.5px solid #fde1ec;   /* đồng bộ hồng nhạt */
+  box-shadow:0 16px 50px rgba(233,30,99,.12);
+  text-align:center;
+
+  transition:transform .25s ease, box-shadow .25s ease;
+  overflow:hidden;               /* FIX: chặn mọi phần tử con lòi ra */
 }
 
-.auth-container:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(241, 167, 145, 0.25);
+.auth-container:hover{
+  transform:translateY(-2px);
+  box-shadow:0 20px 60px rgba(233,30,99,.16);
 }
 
-.auth-container h2 {
-  font-size: 24px;
-  font-weight: 650;
-  color: #4b3f36;
-  margin-bottom: 28px;
+.auth-container h2{
+  font-size:24px;
+  font-weight:800;
+  color:#8a1538;
+  margin:0 0 22px;
+  letter-spacing:.2px;
 }
 
 /* ===== INPUT GROUP ===== */
-.input-group {
-  position: relative;
-  margin-bottom: 20px;
-  width: 100%;
+.input-group{
+  position:relative;
+  margin-bottom:14px;
+  width:100%;
 }
 
-.input-group i {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #b08876;
-  font-size: 17px;
-  pointer-events: none;
+.input-group i{
+  position:absolute;
+  left:16px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#e91e63;                 /* FIX: icon theo màu chủ đạo */
+  font-size:17px;
+  pointer-events:none;
+  opacity:.9;
 }
 
-.input-group input {
-  width: 100%;
-  padding: 12px 16px 12px 45px;
-  border: 1.6px solid #f2c3b7;
-  border-radius: 30px;
-  font-size: 15px;
-  background: #fff;
-  color: #4b3f36;
-  outline: none;
-  transition: all 0.28s ease;
-  box-sizing: border-box; /* KHÔNG CHO TEXTBOX PHÌNH RA */
+.input-group input{
+  width:100%;
+  max-width:100%;                /* FIX: chặn phình */
+  display:block;
+
+  padding:12px 16px 12px 45px;
+  border:1.6px solid #f3c1d8;
+  border-radius:30px;
+  font-size:15px;
+
+  background:#fff;
+  color:#4b1630;
+  outline:none;
+  transition:border-color .2s ease, box-shadow .2s ease, background .2s ease;
 }
 
-.input-group input:hover {
-  background: #fff8f6;
+.input-group input::placeholder{
+  color:rgba(75,22,48,.55);
 }
 
-.input-group input:focus {
-  border-color: #f1a791;
-  box-shadow: 0 0 7px rgba(241, 167, 145, 0.35);
-  background: #fff;
+.input-group input:hover{
+  background:#fff7fb;
+}
+
+.input-group input:focus{
+  border-color:#e91e63;
+  box-shadow:0 0 0 4px rgba(233,30,99,.12);
+  background:#fff;
 }
 
 /* ===== NÚT CHÍNH ===== */
-.btn-auth {
-  width: 100%;
-  padding: 12px 0;
-  background: linear-gradient(135deg, #f2b3a2, #f1a791);
-  color: #fff;
-  font-size: 17px;
-  font-weight: 600;
-  border: none;
-  border-radius: 30px;
-  cursor: pointer;
-  transition: 0.3s ease;
-  margin-top: 8px;
+.btn-auth{
+  width:100%;
+  padding:12px 0;
+  background:linear-gradient(135deg, #e91e63, #d81b60);
+  color:#fff;
+  font-size:16px;
+  font-weight:700;
+  border:none;
+  border-radius:30px;
+  cursor:pointer;
+  transition:transform .2s ease, box-shadow .2s ease, filter .2s ease;
+  margin-top:8px;
 }
 
-.btn-auth:hover {
-  background: linear-gradient(135deg, #ee9b83, #e88d77);
-  box-shadow: 0 5px 15px rgba(241, 167, 145, 0.45);
-  transform: translateY(-2px);
+.btn-auth:hover{
+  transform:translateY(-2px);
+  box-shadow:0 12px 28px rgba(233,30,99,.25);
+  filter:brightness(.98);
 }
 
-/* ===== LIÊN KẾT ===== */
-.auth-text {
-  margin-top: 25px;
-  font-size: 14px;
-  color: #7b6d63;
+/* ===== LINK TEXT ===== */
+.auth-text{
+  margin-top:18px;
+  font-size:14px;
+  color:#7b6d63;
 }
 
-.auth-text a {
-  color: #f1a791;
-  font-weight: 600;
-  transition: 0.3s ease;
+.auth-text a{
+  color:#e91e63;
+  font-weight:700;
+  transition:.2s ease;
 }
 
-.auth-text a:hover {
-  color: #e28a74;
-  text-decoration: underline;
+.auth-text a:hover{
+  color:#c2185b;
+  text-decoration:underline;
+}
+
+/* ===== FORGOT LINK (đồng bộ) ===== */
+.forgot-link{
+  display:block;
+  margin-top:12px;
+  text-align:center;
+  font-size:14px;
+  color:#e91e63;
+  text-decoration:none;
+  transition:.2s ease;
+}
+.forgot-link:hover{
+  color:#c2185b;
+  text-decoration:underline;
 }
 
 /* ===== RESET MAIN ===== */
-main {
-  margin: 0;
-  padding: 0;
-}
+main{ margin:0; padding:0; }
 
 /* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-  .auth-container {
-    padding: 34px 28px;
-    max-width: 330px;
+@media (max-width:768px){
+  .auth-container{
+    padding:32px 22px;
+    width:min(360px, 100%);
   }
-
-  .auth-container h2 {
-    font-size: 22px;
-  }
-
-  .btn-auth {
-    font-size: 16px;
-  }
+  .auth-container h2{ font-size:22px; }
 }
 
-@media (max-width: 480px) {
-  .auth-container {padding: 28px 22px;
-    max-width: 300px;
+@media (max-width:480px){
+  .auth-container{
+    padding:28px 18px;
+    width:min(330px, 100%);
   }
-
-  .input-group input {
-    font-size: 14px;
-  }
-
-  .btn-auth {
-    padding: 11px;
-  }
+  .input-group input{ font-size:14px; }
+  .btn-auth{ padding:11px 0; }
 }
