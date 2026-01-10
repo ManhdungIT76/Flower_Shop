@@ -56,31 +56,31 @@ def overview():
 @app.route('/api/doanhthu')
 def doanhthu():
     try:
-        month = request.args.get("month")
+        month = request.args.get("month", type=int)
+        year  = request.args.get("year", type=int)
 
-        if not month:
-            month = "MONTH(CURRENT_DATE())"
-        else:
-            month = int(month)
+        if month is None:
+            month = int(pd.Timestamp.now().month)
+        if year is None:
+            year = int(pd.Timestamp.now().year)
 
         with closing(get_db_connection()) as conn, closing(conn.cursor(dictionary=True)) as cur:
-            cur.execute(f"""
+            cur.execute("""
                 SELECT 
                     DAY(order_date) AS ngay,
                     SUM(total_amount) AS doanh_thu
                 FROM orders
-                WHERE MONTH(order_date) = {month}
-                  AND YEAR(order_date) = YEAR(CURRENT_DATE())
+                WHERE MONTH(order_date) = %s
+                  AND YEAR(order_date) = %s
                 GROUP BY DAY(order_date)
                 ORDER BY ngay
-            """)
+            """, (month, year))
             rows = cur.fetchall()
 
         return jsonify({
             "day": [r["ngay"] for r in rows],
             "revenue": [float(r["doanh_thu"]) for r in rows]
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -91,25 +91,24 @@ def doanhthu():
 @app.route('/api/tyle')
 def tyle():
     try:
-        month = request.args.get("month")
+        month = request.args.get("month", type=int)
+        year  = request.args.get("year", type=int)
 
-        if not month:
-            month = "MONTH(CURRENT_DATE())"
-        else:
-            month = int(month)
+        if month is None:
+            month = int(pd.Timestamp.now().month)
+        if year is None:
+            year = int(pd.Timestamp.now().year)
 
         with closing(get_db_connection()) as conn, closing(conn.cursor(dictionary=True)) as cur:
-
-            cur.execute(f"""
+            cur.execute("""
                 SELECT
                     SUM(CASE WHEN status = 'Đã giao' THEN 1 ELSE 0 END) AS hoan_thanh,
                     SUM(CASE WHEN status = 'Đang giao hàng' THEN 1 ELSE 0 END) AS dang_giao,
                     SUM(CASE WHEN status = 'Đã hủy' THEN 1 ELSE 0 END) AS huy
                 FROM orders
-                WHERE MONTH(order_date) = {month}
-                  AND YEAR(order_date) = YEAR(CURRENT_DATE())
-            """)
-
+                WHERE MONTH(order_date) = %s
+                  AND YEAR(order_date) = %s
+            """, (month, year))
             data = cur.fetchone() or {}
 
         return jsonify({
@@ -117,10 +116,23 @@ def tyle():
             "dang_giao": int(data.get("dang_giao") or 0),
             "huy": int(data.get("huy") or 0)
         })
-
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/years")
+def years():
+    try:
+        with closing(get_db_connection()) as conn, closing(conn.cursor()) as cur:
+            cur.execute("""
+                SELECT DISTINCT YEAR(order_date) AS y
+                FROM orders
+                WHERE order_date IS NOT NULL
+                ORDER BY y DESC
+            """)
+            rows = cur.fetchall()
+        return jsonify([int(r[0]) for r in rows if r[0] is not None])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # =========================================
 # 4) ĐƠN HÀNG GẦN ĐÂY

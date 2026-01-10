@@ -5,40 +5,111 @@ $signup_status = "";
 $message = "";
 $redirect_url = "";
 
+// ===== HÀM HỖ TRỢ =====
+function has_whitespace($s) {
+    return preg_match('/\s/', $s) === 1;
+}
+function is_valid_username($u) {
+    return preg_match('/^[A-Za-z][A-Za-z0-9_]*$/', $u) === 1;
+}
+
+function is_valid_email_strict($e) {
+    if ($e === "") return false;
+    if (has_whitespace($e)) return false;
+
+    // reject consecutive dots
+    if (strpos($e, '..') !== false) return false;
+
+    // reject starts/ends with dot
+    if ($e[0] === '.' || substr($e, -1) === '.') return false;
+
+    // must match basic pattern
+    if (!preg_match('/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/', $e)) return false;
+
+    // extra dot rules around '@'
+    $parts = explode('@', $e);
+    if (count($parts) !== 2) return false;
+
+    $local = $parts[0];
+    $domain = $parts[1];
+
+    // local/domain cannot start/end with dot
+    if ($local === "" || $domain === "") return false;
+    if ($local[0] === '.' || substr($local, -1) === '.') return false;
+    if ($domain[0] === '.' || substr($domain, -1) === '.') return false;
+
+    return true;
+}
+
+function is_valid_phone_vn_basic($p) {
+    return preg_match('/^0\d{9}$/', $p) === 1;
+}
+
 // ===== XỬ LÝ KHI SUBMIT =====
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
-  $fullname = trim($_POST["fullname"]);
-  $username = trim($_POST["username"]);
-  $email = trim($_POST["email"]);
-  $phone = trim($_POST["phone"]);
-  $password = trim($_POST["password"]);
-  $confirm = trim($_POST["confirm_password"]);
+  $fullname = trim($_POST["fullname"] ?? "");
+  $username = trim($_POST["username"] ?? "");
+  $email_raw = trim($_POST["email"] ?? "");
+  $email = strtolower($email_raw);
+  $phone    = trim($_POST["phone"] ?? "");
+  $password = $_POST["password"] ?? "";
+  $confirm  = $_POST["confirm_password"] ?? "";
 
-  // KIỂM TRA MẬT KHẨU
-  if ($password !== $confirm) {
+  // ===== 0) FULLNAME =====
+  if ($fullname === "") {
+      $signup_status = "invalid_fullname";
+      $message = "Họ và tên không được để trống.";
+  }
+
+  // ===== 1) USERNAME =====
+  else if ($username === "" || has_whitespace($username) || !is_valid_username($username)) {
+      $signup_status = "invalid_username";
+      $message = "Tên đăng nhập không hợp lệ (bắt đầu bằng chữ cái, không dấu, không khoảng trắng, chỉ gồm chữ/số/_).";
+  }
+
+  // ===== 2) EMAIL (STRICT) =====
+  else if (!is_valid_email_strict($email)) {
+      $signup_status = "invalid_email";
+      $message = "Email không hợp lệ.";
+  }
+
+  // ===== 3) PHONE =====
+  else if ($phone === "" || !is_valid_phone_vn_basic($phone)) {
+      $signup_status = "invalid_phone";
+      $message = "Số điện thoại không hợp lệ (phải đủ 10 số và bắt đầu bằng 0).";
+  }
+
+  // ===== 4) PASSWORD =====
+  else if (strlen($password) < 6 || has_whitespace($password)) {
+      $signup_status = "invalid_password";
+      $message = "Mật khẩu không hợp lệ (tối thiểu 6 ký tự và không chứa khoảng trắng).";
+  }
+
+  // ===== 5) CONFIRM =====
+  else if ($password !== $confirm) {
       $signup_status = "confirm_fail";
-      $message = "Mật khẩu không khớp 😢";
-  } else {
+      $message = "Mật khẩu không khớp.";
+  }
 
-      // KIỂM TRA TRÙNG USERNAME / EMAIL
-      $check = $conn->prepare("SELECT user_id FROM users WHERE username=? OR email=?");
-      $check->bind_param("ss", $username, $email);
+  else {
+      // KIỂM TRA TRÙNG USERNAME / EMAIL / PHONE
+      $check = $conn->prepare("SELECT user_id FROM users WHERE username=? OR email=? OR phone_number=? LIMIT 1");
+      $check->bind_param("sss", $username, $email, $phone);
       $check->execute();
       $check->store_result();
 
       if ($check->num_rows > 0) {
           $signup_status = "exists";
-          $message = "Tên đăng nhập hoặc email đã tồn tại ❌";
+          $message = "Tên đăng nhập / email / số điện thoại đã tồn tại.";
       } else {
 
-          // Thêm user
           $created_at = date("Y-m-d H:i:s");
           $updated_at = $created_at;
           $role = "Khách hàng";
           $shipping_address = "";
 
-          // ⚠ HASH MẬT KHẨU (nếu muốn admin bảo mật)
+          // HASH MẬT KHẨU
           $hashed_pass = $password;
 
           $stmt = $conn->prepare("
@@ -49,11 +120,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
           if ($stmt->execute()) {
               $signup_status = "success";
-              $message = "Đăng ký thành công ✨";
+              $message = "Đăng ký thành công";
               $redirect_url = "login.php";
           } else {
               $signup_status = "error";
-              $message = "Lỗi server. Vui lòng thử lại 😢";
+              $message = "Lỗi server. Vui lòng thử lại.";
           }
 
           $stmt->close();
@@ -65,6 +136,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   $conn->close();
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="vi">
@@ -167,22 +239,38 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
       <div class="input-group">
         <i class="fa-solid fa-user"></i>
-        <input type="text" name="username" placeholder="Tên đăng nhập" required>
+        <input type="text" name="username" placeholder="Tên đăng nhập"
+                required
+                pattern="[A-Za-z][A-Za-z0-9_]*"
+                title="Bắt đầu bằng chữ cái, chỉ gồm chữ/số/_ , không khoảng trắng, không dấu, không ký tự đặc biệt">
       </div>
 
       <div class="input-group">
         <i class="fa-solid fa-envelope"></i>
-        <input type="email" name="email" placeholder="Email" required>
+        <input type="email"
+            name="email"
+            placeholder="Email"
+            required
+            pattern="^[a-zA-Z0-9._%+\-]+@[a-zA-Z.\-]+\.[a-zA-Z]{2,}$"
+            title="Email không hợp lệ (ví dụ: name@gmail.com)">
       </div>
 
       <div class="input-group">
         <i class="fa-solid fa-phone"></i>
-        <input type="tel" name="phone" placeholder="Số điện thoại" required pattern="[0-9]{10}" maxlength="10">
+        <input type="tel" name="phone" placeholder="Số điện thoại"
+                required
+                pattern="0[0-9]{9}"
+                maxlength="10"
+                title="Bắt đầu bằng 0 và đủ 10 số">
       </div>
 
       <div class="input-group">
         <i class="fa-solid fa-lock"></i>
-        <input type="password" name="password" placeholder="Mật khẩu" required minlength="6">
+        <input type="password" name="password" placeholder="Mật khẩu"
+                required
+                minlength="6"
+                pattern="^\S{6,}$"
+                title="Tối thiểu 6 ký tự và không chứa khoảng trắng">
       </div>
 
       <div class="input-group">

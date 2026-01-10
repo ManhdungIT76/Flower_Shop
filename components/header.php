@@ -222,7 +222,9 @@ if (session_status() === PHP_SESSION_NONE) {
           <?php endif; ?>
 
           <a href="review_history.php">⭐ Lịch sử đánh giá</a>
-          <a href="#" id="openChangePass">🔒 Đổi mật khẩu</a>
+          <?php if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin'): ?>
+            <a href="#" id="openChangePass">🔒 Đổi mật khẩu</a>
+          <?php endif; ?>
           <a href="logout.php">🚪 Đăng xuất</a>
         </div>
       </div>
@@ -267,16 +269,24 @@ if (session_status() === PHP_SESSION_NONE) {
 
         <div class="cp-row">
           <label>Mật khẩu mới</label>
-          <input type="password" name="new_password" required>
+          <input type="password" name="new_password"
+                required
+                minlength="6"
+                pattern="^\S{6,}$"
+                title="Tối thiểu 6 ký tự và không chứa khoảng trắng">
         </div>
 
         <div class="cp-row">
           <label>Nhập lại mật khẩu mới</label>
-          <input type="password" name="confirm_password" required>
+          <input type="password" name="confirm_password"
+                required
+                minlength="6"
+                pattern="^\S{6,}$"
+                title="Tối thiểu 6 ký tự và không chứa khoảng trắng">
         </div>
 
-        <button type="submit" class="cp-submit">Cập nhật</button>
-      </form>
+      <button type="submit" class="cp-submit">Cập nhật</button>
+    </form>
     </div>
   </div>
 </div>
@@ -383,7 +393,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
   form.addEventListener("submit", async function(e){
     e.preventDefault();
+    const oldp = form.querySelector('[name="old_password"]').value;
+    const newp = form.querySelector('[name="new_password"]').value;
+    const cfm  = form.querySelector('[name="confirm_password"]').value;
 
+    if (!oldp || !newp || !cfm) {
+      showAlert("bad", "Vui lòng nhập đủ thông tin.");
+      return;
+    }
+    if (/\s/.test(newp)) {
+      showAlert("bad", "Mật khẩu mới không được chứa khoảng trắng.");
+      return;
+    }
+    if (newp.length < 6) {
+      showAlert("bad", "Mật khẩu mới tối thiểu 6 ký tự.");
+      return;
+    }
+    if (newp !== cfm) {
+      showAlert("bad", "Mật khẩu mới không khớp.");
+      return;
+    }
+    if (newp === oldp) {
+      showAlert("bad", "Mật khẩu mới phải khác mật khẩu hiện tại.");
+      return;
+    }
     const fd = new FormData(form);
 
     try {

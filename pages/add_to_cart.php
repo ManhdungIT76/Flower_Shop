@@ -1,52 +1,68 @@
 <?php
+// add_to_cart.php (TRẢ JSON + CHẶN VƯỢT TỒN KHO)
+if (session_status() === PHP_SESSION_NONE) session_start();
+header('Content-Type: application/json; charset=utf-8');
+
 require_once __DIR__ . '/../include/admin_gate.php';
-forbid_admin_buying();
-session_start();
+forbid_admin_buying(); // nếu hàm này đang echo/redirect thì sẽ làm hỏng JSON (xem ghi chú dưới)
+
 include '../include/db_connect.php';
 
-// Nếu không có ID thì không xử lý
 if (!isset($_GET['id'])) {
-    echo "error: missing id";
-    exit();
+    echo json_encode(["ok" => false, "message" => "Thiếu id sản phẩm."]);
+    exit;
 }
 
 $product_id = $_GET['id'];
-$qty = isset($_GET['quantity']) ? intval($_GET['quantity']) : 1;
-
+$qty = isset($_GET['quantity']) ? (int)$_GET['quantity'] : 1;
 if ($qty < 1) $qty = 1;
 
-// Lấy thông tin sản phẩm từ DB
-$p = $conn->prepare("SELECT * FROM products WHERE product_id = ?");
+// Lấy sản phẩm + tồn kho
+$p = $conn->prepare("SELECT product_id, product_name, price, image_url, stock FROM products WHERE product_id=? LIMIT 1");
 $p->bind_param("s", $product_id);
 $p->execute();
 $product = $p->get_result()->fetch_assoc();
+$p->close();
 
 if (!$product) {
-    echo "error: product not found";
-    exit();
+    echo json_encode(["ok" => false, "message" => "Sản phẩm không tồn tại."]);
+    exit;
 }
 
-// Tạo giỏ hàng nếu chưa tồn tại
-if (!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
+$stock = (int)($product['stock'] ?? 0);
+if ($stock <= 0) {
+    echo json_encode(["ok" => false, "message" => "Sản phẩm đã hết hàng."]);
+    exit;
 }
 
-// Nếu sản phẩm đã có trong giỏ → tăng đúng số lượng
-if (isset($_SESSION['cart'][$product_id])) {
-    $_SESSION['cart'][$product_id]['qty'] += $qty;
+// Tạo giỏ hàng nếu chưa có
+if (!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
+
+$current_qty = isset($_SESSION['cart'][$product_id]) ? (int)$_SESSION['cart'][$product_id]['qty'] : 0;
+$new_qty = $current_qty + $qty;
+
+// Chặn vượt tồn kho (tính theo tổng trong giỏ)
+if ($new_qty > $stock) {
+    echo json_encode([
+        "ok" => false,
+        "message" => "Không đủ số lượng trong kho. Hiện còn {$stock} sản phẩm."
+    ]);
+    exit;
 }
-// Nếu sản phẩm chưa có → thêm mới
-else {
+
+// Ghi vào giỏ
+if ($current_qty > 0) {
+    $_SESSION['cart'][$product_id]['qty'] = $new_qty;
+} else {
     $_SESSION['cart'][$product_id] = [
         "id"    => $product['product_id'],
         "name"  => $product['product_name'],
-        "price" => $product['price'],
+        "price" => (float)$product['price'],
         "image" => $product['image_url'],
         "qty"   => $qty
     ];
 }
 
-// Trả về thông báo cho AJAX
-echo "success";
-exit();
+echo json_encode(["ok" => true, "message" => "Đã thêm vào giỏ hàng."]);
+exit;
 ?>

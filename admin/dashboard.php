@@ -48,22 +48,29 @@
 </div>
 
 <!-- ==== BIỂU ĐỒ ==== -->
- <div style="margin-bottom: 10px;">
-    <label>Chọn tháng:</label>
-    <select id="selectMonth" onchange="onMonthChange()">
-        <option value="1">Tháng 1</option>
-        <option value="2">Tháng 2</option>
-        <option value="3">Tháng 3</option>
-        <option value="4">Tháng 4</option>
-        <option value="5">Tháng 5</option>
-        <option value="6">Tháng 6</option>
-        <option value="7">Tháng 7</option>
-        <option value="8">Tháng 8</option>
-        <option value="9">Tháng 9</option>
-        <option value="10">Tháng 10</option>
-        <option value="11">Tháng 11</option>
-        <option value="12">Tháng 12</option>
+ <div style="margin-bottom: 10px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+  <div>
+    <label>Năm:</label>
+    <select id="selectYear" onchange="onFilterChange()"></select>
+  </div>
+
+  <div>
+    <label>Tháng:</label>
+    <select id="selectMonth" onchange="onFilterChange()">
+      <option value="1">Tháng 1</option>
+      <option value="2">Tháng 2</option>
+      <option value="3">Tháng 3</option>
+      <option value="4">Tháng 4</option>
+      <option value="5">Tháng 5</option>
+      <option value="6">Tháng 6</option>
+      <option value="7">Tháng 7</option>
+      <option value="8">Tháng 8</option>
+      <option value="9">Tháng 9</option>
+      <option value="10">Tháng 10</option>
+      <option value="11">Tháng 11</option>
+      <option value="12">Tháng 12</option>
     </select>
+  </div>
 </div>
 <div class="chart-container">
     <div style="flex:2;">
@@ -136,140 +143,104 @@ async function loadOverview() {
 }
 
 
+// ===== API lấy danh sách năm =====
+async function loadYears() {
+  const res = await fetch(`${API_BASE}/years`);
+  const years = await res.json(); // ví dụ: [2023, 2024, 2025]
+
+  const yearSelect = document.getElementById("selectYear");
+  yearSelect.innerHTML = "";
+
+  years.forEach(y => {
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.textContent = `Năm ${y}`;
+    yearSelect.appendChild(opt);
+  });
+
+  // set mặc định: năm hiện tại nếu có, không có thì chọn năm đầu tiên trong list
+  const currentYear = new Date().getFullYear();
+  if (years.includes(currentYear)) yearSelect.value = currentYear;
+  else if (years.length > 0) yearSelect.value = years[0];
+}
 
 // ===== 2. DOANH THU 12 THÁNG =====
 let chartDoanhThu = null;
 let chartTyLe = null;   
 async function loadDoanhThu() {
+  const now = new Date();
+  const monthSelect = document.getElementById("selectMonth");
+  const yearSelect  = document.getElementById("selectYear");
 
-    // Nếu chưa chọn → set mặc định tháng hiện tại
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
+  if (!monthSelect.dataset.loaded) {
+    monthSelect.value = now.getMonth() + 1;
+    monthSelect.dataset.loaded = "1";
+  }
 
-    const monthSelect = document.getElementById("selectMonth");
+  const selectedMonth = monthSelect.value;
+  const selectedYear  = yearSelect.value;
 
-    // Lần đầu trang load → không đổi value nếu người dùng đã chọn tháng
-    if (!monthSelect.dataset.loaded) {
-        monthSelect.value = currentMonth;
-        monthSelect.dataset.loaded = "1";
-    }
+  const res = await fetch(`${API_BASE}/doanhthu?year=${selectedYear}&month=${selectedMonth}`);
+  const data = await res.json();
 
-    const selectedMonth = monthSelect.value;
+  const labels = [];
+  const values = new Array(31).fill(0);
+  for (let i = 1; i <= 31; i++) labels.push("" + i);
 
-    const res = await fetch(`${API_BASE}/doanhthu?month=${selectedMonth}`);
-    const data = await res.json();
+  data.day.forEach((d, i) => { values[d - 1] = data.revenue[i]; });
 
-    const labels = [];
-    const values = new Array(31).fill(0);
+  if (chartDoanhThu) chartDoanhThu.destroy();
 
-    for (let i = 1; i <= 31; i++) labels.push("" + i);
-
-    data.day.forEach((d, i) => {
-        values[d - 1] = data.revenue[i];
-    });
-
-    if (chartDoanhThu) chartDoanhThu.destroy();
-
-    chartDoanhThu = new Chart(document.getElementById("chartDoanhThu"), {
+  chartDoanhThu = new Chart(document.getElementById("chartDoanhThu"), {
     type: "line",
-    data: {
-        labels,
-        datasets: [{
-            label: "",           // ❌ Bỏ tên → Legend sẽ không hiển thị
-            data: values,
-            borderColor: "#c59d8c",
-            borderWidth: 2,
-            fill: false,
-            tension: 0.3,
-            pointRadius: 4,
-            pointBackgroundColor: "#c59d8c",
-            pointHoverRadius: 6
-        }]
-    },
+    data: { labels, datasets: [{ label:"", data: values, borderColor:"#c59d8c", borderWidth:2, fill:false, tension:0.3, pointRadius:4, pointBackgroundColor:"#c59d8c", pointHoverRadius:6 }] },
     options: {
-        plugins: {
-            legend: { display: false }   // ❌ Tắt ô vuông legend
-        },
-        scales: {
-            x: {
-                title: {
-                    display: true,
-                    text: "Ngày",        // 🟢 Thêm chữ "Ngày"
-                    font: { size: 14 }
-                }
-            },
-            y: {
-                beginAtZero: true,
-                title: {
-                    display: true,
-                    text: "VND",         // 🟢 Thêm chữ "VND"
-                    font: { size: 14 }
-                },
-                ticks: {
-                    callback: function(value) {
-                        return value.toLocaleString() + " đ";   // 🟢 Format VND
-                    }
-                }
-            }
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { title: { display:true, text:"Ngày", font:{ size:14 } } },
+        y: {
+          beginAtZero:true,
+          title:{ display:true, text:"VND", font:{ size:14 } },
+          ticks:{ callback:(value)=> value.toLocaleString() + " đ" }
         }
+      }
     }
-});
+  });
 }
 
 
 
 // ===== 3. TỶ LỆ ĐƠN HÀNG =====
-async function loadTyLe(month) {
-    const res = await fetch(`${API_BASE}/tyle?month=${month}`);
-    const raw = await res.json();
+async function loadTyLe() {
+  const month = document.getElementById("selectMonth").value;
+  const year  = document.getElementById("selectYear").value;
 
-    const labels = [];
-    const values = [];
-    const colors = [];
+  const res = await fetch(`${API_BASE}/tyle?year=${year}&month=${month}`);
+  const raw = await res.json();
 
-    if (raw.hoan_thanh > 0) {
-        labels.push("Hoàn thành");
-        values.push(raw.hoan_thanh);
-        colors.push("#8bc34a");
-    }
-    if (raw.dang_giao > 0) {
-        labels.push("Đang giao");
-        values.push(raw.dang_giao);
-        colors.push("#ffc107");
-    }
-    if (raw.huy > 0) {
-        labels.push("Hủy");
-        values.push(raw.huy);
-        colors.push("#e57373");
-    }
+  const labels = [], values = [], colors = [];
+  if (raw.hoan_thanh > 0) { labels.push("Hoàn thành"); values.push(raw.hoan_thanh); colors.push("#8bc34a"); }
+  if (raw.dang_giao > 0)  { labels.push("Đang giao");  values.push(raw.dang_giao);  colors.push("#ffc107"); }
+  if (raw.huy > 0)        { labels.push("Hủy");        values.push(raw.huy);        colors.push("#e57373"); }
 
-    const total = values.reduce((a, b) => a + b, 0);
+  const total = values.reduce((a,b)=>a+b,0);
+  if (chartTyLe) chartTyLe.destroy();
 
-    // ❗ Destroy đúng biến
-    if (chartTyLe) chartTyLe.destroy();
-
-    chartTyLe = new Chart(document.getElementById("chartTyLe"), {
-        type: "pie",
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: colors
-            }]
-        },
-        plugins: [ChartDataLabels],
-        options: {
-            plugins: {
-                datalabels: {
-                    formatter: v => ((v / total) * 100).toFixed(1) + "%",
-                    color: "#000",
-                    font: { weight: "bold", size: 14 }
-                }
-            }
+  chartTyLe = new Chart(document.getElementById("chartTyLe"), {
+    type:"pie",
+    data:{ labels, datasets:[{ data:values, backgroundColor:colors }] },
+    plugins:[ChartDataLabels],
+    options:{
+      plugins:{
+        datalabels:{
+          formatter:(v)=> total ? ((v/total)*100).toFixed(1)+"%" : "0%",
+          color:"#000",
+          font:{ weight:"bold", size:14 }
         }
-    });
+      }
+    }
+  });
 }
-
 
 
 // ===== 4. ĐƠN HÀNG =====
@@ -316,26 +287,27 @@ async function loadNguoiDung() {
     });
 }
 
-function onMonthChange() {
-    const month = document.getElementById("selectMonth").value;
-    loadDoanhThu();        // cập nhật doanh thu theo ngày
-    loadTyLe(month);       // cập nhật tỷ lệ đơn hàng theo tháng
+function onFilterChange() {
+  loadDoanhThu();
+  loadTyLe();
 }
 
 
 // ==== Gọi tất cả API ====
-loadOverview();
+(async function initDashboard() {
+  loadOverview();
 
-const currentMonth = new Date().getMonth() + 1;
-document.getElementById("selectMonth").value = currentMonth;
+  await loadYears();
 
-// Load cả hai biểu đồ theo tháng hiện tại
-loadDoanhThu();
-loadTyLe(currentMonth);
+  // set tháng hiện tại
+  document.getElementById("selectMonth").value = new Date().getMonth() + 1;
 
-loadDonHang();
-loadNguoiDung();
+  loadDoanhThu();
+  loadTyLe();
 
+  loadDonHang();
+  loadNguoiDung();
+})();
 
 </script>
 

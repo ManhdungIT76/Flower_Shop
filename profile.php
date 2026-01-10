@@ -9,6 +9,7 @@ if (!isset($_SESSION["user"])) {
 }
 
 $user_id = $_SESSION["user"]["id"];
+$user_role = $_SESSION["user"]["role"] ?? "";
 
 // ===== LẤY THÔNG TIN NGƯỜI DÙNG =====
 $sql = "SELECT * FROM users WHERE user_id = ?";
@@ -44,22 +45,29 @@ if (!$user) {
 
     <h2>Hồ sơ cá nhân</h2>
 
-    <form action="pages/update_profile.php" method="POST">
+    <form action="pages/update_profile.php" method="POST" data-role="<?= htmlspecialchars($user_role) ?>">
 
-      <label>Họ và tên</label>
-      <input type="text" name="full_name" value="<?= htmlspecialchars($user['full_name']) ?>" required>
+        <label>Họ và tên</label>
+        <input type="text" name="full_name"
+        value="<?= htmlspecialchars($user['full_name']) ?>"
+        required>
 
-      <label>Tên đăng nhập</label>
-      <input type="text" name="username" value="<?= htmlspecialchars($user['username']) ?>" required>
+        <label>Email</label>
+        <input type="email" name="email"
+        value="<?= htmlspecialchars($user['email']) ?>"
+        required>
 
-      <label>Email</label>
-      <input type="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" required>
+        <label>Số điện thoại</label>
+        <input type="tel" name="phone_number"
+        value="<?= htmlspecialchars($user['phone_number']) ?>"
+        required
+        pattern="0[0-9]{9}"
+        maxlength="10"
+        title="Bắt đầu bằng 0 và đủ 10 số">
 
-      <label>Số điện thoại</label>
-      <input type="text" name="phone_number" value="<?= htmlspecialchars($user['phone_number']) ?>">
-
-      <label>Địa chỉ</label>
-      <input type="text" name="shipping_address" value="<?= htmlspecialchars($user['shipping_address']) ?>">
+        <label>Địa chỉ</label>
+        <input type="text" name="shipping_address"
+        value="<?= htmlspecialchars($user['shipping_address']) ?>">
 
       <button class="btn">Cập nhật thông tin</button>
 
@@ -73,7 +81,7 @@ if (!$user) {
 
 <div id="popup" class="popup-overlay">
   <div class="popup-box">
-    <div class="popup-icon">✔</div>
+    <div id="popup-icon" class="popup-icon">✔</div>
     <p id="popup-message"></p>
   </div>
 </div>
@@ -120,17 +128,35 @@ if (!$user) {
 </style>
 
 <script>
-function showPopup(message) {
-    let popup = document.getElementById("popup");
-    let msg = document.getElementById("popup-message");
+function showPopup(message, type = "success") {
+    const popup = document.getElementById("popup");
+    const msg = document.getElementById("popup-message");
+    const icon = document.getElementById("popup-icon");
 
     msg.innerText = message;
+
+    if (type === "error") {
+        icon.innerText = "✖";
+        icon.style.color = "red";
+    } else {
+        icon.innerText = "✔";
+        icon.style.color = "#4CAF50";
+    }
+
     popup.style.display = "flex";
 
-    // Tự tắt sau 2 giây
     setTimeout(() => {
         popup.style.display = "none";
     }, 2000);
+}
+</script>
+<script>
+const profileForm = document.querySelector('form[action="pages/update_profile.php"]');
+if (profileForm && profileForm.dataset.role === "admin") {
+  profileForm.addEventListener("submit", function(e) {
+    e.preventDefault();
+    showPopup("Không được ủy quyền.", "error");
+  });
 }
 </script>
 

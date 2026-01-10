@@ -1,3 +1,14 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
+if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] ?? '') !== 'admin') {
+  header('Location: /Flower_Shop/login.php?redirect=admin/dashboard.php');
+  exit;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -96,7 +107,7 @@
   <a href="/Flower_Shop/admin/orders/list.php">Đơn hàng</a>
   <a href="/Flower_Shop/index.php">Về trang chủ</a>
 
-  <button class="logout" onclick="window.location.href='/XayDungHTTT_WebBanHoa/login.php'">
+  <button class="logout" onclick="window.location.href='/Flower_Shop/login.php'">
     Đăng xuất
   </button>
 </div>

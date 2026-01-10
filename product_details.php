@@ -21,6 +21,7 @@ if (!$product) {
 
 $category_id = $product['category_id'];
 $current_id  = $product['product_id'];
+$stock = (int)($product['stock'] ?? 0);
 
 // ====== USER_ID + CHECK USER THƯỜNG XUYÊN ======
 $user_id = $_SESSION['user']['id'] ?? null;
@@ -222,10 +223,22 @@ if (count($recommend_products) < $limit && $isFrequentUser && $user_id) {
         <?= $product['description'] ?? "Sản phẩm đang cập nhật mô tả..." ?>
       </p>
 
-      <div class="quantity">
-        <label>Số lượng:</label>
-        <input type="number" min="1" value="1">
-      </div>
+        <div class="quantity" style="display:flex;align-items:center;gap:12px;">
+            <label>Số lượng:</label>
+            <input
+                type="number"
+                min="1"
+                max="<?= $stock ?>"
+                value="1"
+                id="qtyInput"
+            >
+
+            <span class="stock-info">
+                Còn lại:
+                <b id="stockLeft"><?= $stock ?></b>
+                sản phẩm
+            </span>
+        </div>
 
       <!-- NÚT THÊM + MUA NGAY -->
       <div class="button-group">
@@ -355,78 +368,147 @@ if (count($recommend_products) < $limit && $isFrequentUser && $user_id) {
 </div>
 
 <script>
-    const addBtn = document.querySelector(".add-to-cart-btn");
-    const quantityInput = document.querySelector(".quantity input");
+const addBtn = document.querySelector(".add-to-cart-btn");
+const buyNowBtn = document.querySelector(".buy-now-btn");
 
-    const productName = "<?= $product['product_name'] ?>";
-    const productId = "<?= $product['product_id'] ?>";
+const productName = "<?= $product['product_name'] ?>";
+const productId = "<?= $product['product_id'] ?>";
 
-    const confirmPopup = document.getElementById("confirm-popup");
-    const confirmText = document.getElementById("confirm-text");
-    const confirmYes = document.getElementById("confirm-yes");
-    const confirmNo = document.getElementById("confirm-no");
+const confirmPopup = document.getElementById("confirm-popup");
+const confirmText = document.getElementById("confirm-text");
+const confirmYes = document.getElementById("confirm-yes");
+const confirmNo = document.getElementById("confirm-no");
 
-    const successPopup = document.getElementById("success-popup");
-    const successOk = document.getElementById("success-ok");
+const successPopup = document.getElementById("success-popup");
+const successOk = document.getElementById("success-ok");
 
-    const isLoggedIn = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
+const isLoggedIn = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
 
-    addBtn.addEventListener("click", () => {
-        const quantity = quantityInput.value;
-        confirmText.innerHTML =
-            `Bạn có chắc muốn thêm <b>${productName}</b> (với số lượng :${quantity}) vào giỏ hàng không?`;
+const qtyInput = document.getElementById("qtyInput");
+const stockLeft = parseInt(document.getElementById("stockLeft").innerText || "0", 10);
 
-        confirmPopup.style.display = "flex";
-    });
+// Nếu hết hàng => khóa nút
+if (stockLeft <= 0) {
+  qtyInput.value = 0;
+  addBtn.disabled = true;
+  buyNowBtn.disabled = true;
+}
 
-    document.querySelector(".buy-now-btn").addEventListener("click", (e) => {
-        e.preventDefault();
-        if (!isLoggedIn) {
-            window.location.href = "login.php?redirect=product_details.php?id=<?= $product['product_id'] ?>";
-            return;
-        }
+// Cho phép xóa để nhập (không tự set lại khi đang gõ)
+qtyInput.addEventListener("input", () => {
+  // không xử lý gì để user xóa nhập tự do
+});
 
-        const quantity = quantityInput.value || 1;
-        fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
-        .then(res => {
-            if (res.status === 403) {
-            alert('Tài khoản admin không được phép mua hàng.');
-            return null;
-            }
-            return res.text();
-        })
-        .then(data => {
-            if (data === null) return;
-            window.location.href = "cart.php";
-        });
-    });
+// Chỉ chuẩn hóa khi rời ô
+qtyInput.addEventListener("blur", () => {
+  let v = parseInt(qtyInput.value, 10);
 
-    confirmNo.addEventListener("click", () => {
-        confirmPopup.style.display = "none";
-    });
+  if (isNaN(v) || v < 1) v = 1;
+  if (stockLeft > 0 && v > stockLeft) v = stockLeft;
+  if (stockLeft <= 0) v = 0;
 
-    confirmYes.addEventListener("click", () => {
-        const quantity = quantityInput.value;
+  qtyInput.value = v;
+});
 
-        confirmPopup.style.display = "none";
+addBtn.addEventListener("click", () => {
+  const quantity = parseInt(qtyInput.value, 10) || 1;
 
-        fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
-        .then(res => {
-            if (res.status === 403) {
-            alert('Tài khoản admin không được phép mua hàng.');
-            return null;
-            }
-            return res.text();
-        })
-        .then(data => {
-            if (data === null) return;
-            successPopup.style.display = "flex";
-        });
-    });
+  if (stockLeft <= 0) {
+    alert("Sản phẩm đã hết hàng.");
+    return;
+  }
+  if (quantity > stockLeft) {
+    alert("Không đủ số lượng trong kho. Hiện còn " + stockLeft + " sản phẩm.");
+    return;
+  }
 
-    successOk.addEventListener("click", () => {
-        successPopup.style.display = "none";
-    });
+  confirmText.innerHTML =
+    `Bạn có chắc muốn thêm <b>${productName}</b> (với số lượng :${quantity}) vào giỏ hàng không?`;
+
+  confirmPopup.style.display = "flex";
+});
+buyNowBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+
+  if (!isLoggedIn) {
+    window.location.href = "login.php?redirect=product_details.php?id=<?= $product['product_id'] ?>";
+    return;
+  }
+
+  const quantity = parseInt(qtyInput.value, 10) || 1;
+
+  if (stockLeft <= 0) {
+    alert("Sản phẩm đã hết hàng.");
+    return;
+  }
+  if (quantity > stockLeft) {
+    alert("Không đủ số lượng trong kho. Hiện còn " + stockLeft + " sản phẩm.");
+    return;
+  }
+
+  fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
+    .then(async (res) => {
+      if (res.status === 403) {
+        alert('Tài khoản admin không được phép mua hàng.');
+        return null;
+      }
+      return await res.json();
+    })
+    .then(data => {
+      if (data === null) return;
+
+      if (!data.ok) {
+        alert(data.message || "Không thêm được vào giỏ hàng.");
+        return;
+      }
+
+      window.location.href = "cart.php";
+    })
+    .catch(() => alert("Vui lòng kiểm tra lại."));
+});
+
+confirmNo.addEventListener("click", () => {
+  confirmPopup.style.display = "none";
+});
+
+confirmYes.addEventListener("click", () => {
+  const quantity = parseInt(qtyInput.value, 10) || 1;
+  confirmPopup.style.display = "none";
+
+  if (stockLeft <= 0) {
+    alert("Sản phẩm đã hết hàng.");
+    return;
+  }
+  if (quantity > stockLeft) {
+    alert("Không đủ số lượng trong kho. Hiện còn " + stockLeft + " sản phẩm.");
+    return;
+  }
+
+  fetch(`pages/add_to_cart.php?id=${productId}&quantity=${quantity}`)
+    .then(async (res) => {
+      if (res.status === 403) {
+        alert('Tài khoản admin không được phép mua hàng.');
+        return null;
+      }
+      return await res.json();
+    })
+    .then(data => {
+      if (data === null) return;
+
+      if (!data.ok) {
+        alert(data.message || "Không thêm được vào giỏ hàng.");
+        return;
+      }
+
+      successPopup.style.display = "flex";
+    })
+    .catch(() => alert("Vui lòng kiểm tra lại."));
+});
+
+successOk.addEventListener("click", () => {
+  successPopup.style.display = "none";
+});
+
 </script>
 
 </body>
