@@ -7,12 +7,15 @@ include "config.php";
 if (!isset($_GET['id'])) {
     die("Không tìm thấy sản phẩm!");
 }
-$isLoggedIn = isset($_SESSION['user']);
+//$isLoggedIn = isset($_SESSION['user']);
 $id = $_GET['id'];
 
 // LẤY THÔNG TIN SẢN PHẨM
-$sql = "SELECT * FROM products WHERE product_id = '$id'";
-$result = mysqli_query($conn, $sql);
+// LẤY THÔNG TIN SẢN PHẨM (SAFE)
+$stmt = mysqli_prepare($conn, "SELECT * FROM products WHERE product_id = ?");
+mysqli_stmt_bind_param($stmt, "s", $id);
+mysqli_stmt_execute($stmt);
+$result = mysqli_stmt_get_result($stmt);
 $product = mysqli_fetch_assoc($result);
 
 if (!$product) {
@@ -78,22 +81,21 @@ $reviews = $stmt_rev->get_result();
 // ==============================
 // SẢN PHẨM LIÊN QUAN: cùng loại + ngang tầm giá
 // ==============================
-$current_price = (float)$product['price'];
+$min_price = $current_price * 0.85;
+$max_price = $current_price * 1.15;
 
-$related_query = "
-    SELECT 
-        p.product_id,
-        p.product_name,
-        p.price,
-        p.image_url
+$stmtRel = mysqli_prepare($conn, "
+    SELECT p.product_id, p.product_name, p.price, p.image_url
     FROM products p
-    WHERE p.category_id = '$category_id'
-      AND p.product_id <> '$current_id'
-      AND p.price BETWEEN " . ($current_price * 0.85) . " AND " . ($current_price * 1.15) . "
+    WHERE p.category_id = ?
+      AND p.product_id <> ?
+      AND p.price BETWEEN ? AND ?
     ORDER BY RAND()
     LIMIT 10
-";
-$related_result = mysqli_query($conn, $related_query);
+");
+mysqli_stmt_bind_param($stmtRel, "ssdd", $category_id, $current_id, $min_price, $max_price);
+mysqli_stmt_execute($stmtRel);
+$related_result = mysqli_stmt_get_result($stmtRel);
 
 // ==============================
 // GỢI Ý (user mới: item-item, user thường xuyên: user-item + fallback item-item)

@@ -512,7 +512,7 @@ header {
 }
 
 .avatar.user {
-    background-image: url("/assets/images/avatar_user.jpg");
+    background-image: url("/assets/images/avt.png");
 }
 .avatar.bot {
     background-image: url("/assets/images/z7128943872304_7000db2b5f7c476efb8c375bf165f8e8.jpg");
@@ -747,4 +747,101 @@ header {
     width: min(360px, calc(100vw - 24px));
     height: 480px;
   }
+}
+/* ===== CHATBOT START SCREEN (MATCH THEME) ===== */
+#chat-start-screen{
+  flex: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: linear-gradient(180deg, #fff5fa 0%, #ffffff 100%);
+}
+
+.chat-start-card{
+  width: 100%;
+  max-width: 320px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px 18px;
+  box-shadow: 0 10px 30px rgba(255,95,162,.25);
+  text-align: center;
+  border: 1px solid #ffb6d5;
+}
+
+/* avatar */
+.chat-start-avatar{
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff5fa2, #ff87bd);
+  color: #fff;
+  font-size: 22px;
+}
+
+/* label */
+.chat-start-label{
+  display:block;
+  text-align:left;
+  font-weight: 600;
+  margin: 10px 0 6px;
+  color: #b8326a;
+}
+
+.chat-req{ color: #e6005c; }
+
+/* input */
+.chat-start-input{
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1.5px solid #ffb6d5;
+  border-radius: 10px;
+  outline: none;
+  font-size: 14px;
+}
+
+.chat-start-input:focus{
+  border-color: #ff5fa2;
+  box-shadow: 0 0 0 2px rgba(255,95,162,.15);
+}
+
+/* error */
+.chat-name-error{
+  text-align:left;
+  font-size: 13px;
+  color: #e6005c;
+  margin-top: 6px;
+  min-height: 16px;
+}
+
+/* button */
+.chat-start-btn{
+  width: 100%;
+  height: 42px;
+  margin-top: 14px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ff5fa2, #ff2f8e);
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.chat-start-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(255,95,162,.35);
+}
+
+/* chat body giữ nguyên */
+#chat-body{
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }

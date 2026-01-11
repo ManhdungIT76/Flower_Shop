@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout_cod'])) {
         exit;
     }
     if (!$items || count($items) == 0) {
-        echo "<script>alert('Bạn chưa chọn sản phẩm!');</script>";
+        echo "<script>alert('Bạn chưa chọn sản phẩm!'); window.location='index.php';</script>";
         exit;
     }
     if (!$delivery_method_id) {

@@ -8,21 +8,36 @@ if (isset($_POST['add'])) {
     $desc = trim($_POST['category_description']);
 
     if (!empty($name)) {
-        // Tạo mã tự động DMxxx
-        $sql = "SELECT MAX(CAST(SUBSTRING(category_id, 3) AS UNSIGNED)) AS max_id FROM categories";
-        $res = $conn->query($sql);
-        $row = $res->fetch_assoc();
-        $next_id = ($row['max_id'] ?? 0) + 1;
-        $new_id = "DM" . str_pad($next_id, 3, "0", STR_PAD_LEFT);
 
-        $stmt = $conn->prepare("INSERT INTO categories (category_id, category_name, category_description, created_at) VALUES (?, ?, ?, NOW())");
-        $stmt->bind_param("sss", $new_id, $name, $desc);
-        $stmt->execute();
+        // 1) KIỂM TRA TRÙNG TÊN DANH MỤC
+        $check = $conn->prepare("SELECT 1 FROM categories WHERE category_name = ? LIMIT 1");
+        $check->bind_param("s", $name);
+        $check->execute();
+        $check->store_result();
 
-        header("Location: list.php");
-        exit();
+        if ($check->num_rows > 0) {
+            echo "<script>alert('Tên danh mục đã tồn tại!');</script>";
+        } else {
+            // 2) TẠO MÃ TỰ ĐỘNG DMxxx
+            $sql = "SELECT MAX(CAST(SUBSTRING(category_id, 3) AS UNSIGNED)) AS max_id FROM categories";
+            $res = $conn->query($sql);
+            $row = $res->fetch_assoc();
+            $next_id = ($row['max_id'] ?? 0) + 1;
+            $new_id = "DM" . str_pad($next_id, 3, "0", STR_PAD_LEFT);
+
+            $stmt = $conn->prepare("
+                INSERT INTO categories (category_id, category_name, category_description, created_at)
+                VALUES (?, ?, ?, NOW())
+            ");
+            $stmt->bind_param("sss", $new_id, $name, $desc);
+            $stmt->execute();
+
+            header("Location: list.php");
+            exit();
+        }
     }
 }
+
 
 // ===== XỬ LÝ XÓA DANH MỤC =====
 if (isset($_GET['delete'])) {
@@ -37,16 +52,34 @@ if (isset($_GET['delete'])) {
 
 // ===== XỬ LÝ SỬA DANH MỤC =====
 if (isset($_POST['edit'])) {
-    $id = $_POST['category_id'];
+    $id   = $_POST['category_id'];
     $name = trim($_POST['category_name_edit']);
     $desc = trim($_POST['category_description_edit']);
 
-    $stmt = $conn->prepare("UPDATE categories SET category_name=?, category_description=? WHERE category_id=?");
-    $stmt->bind_param("sss", $name, $desc, $id);
-    $stmt->execute();
+    // KIỂM TRA TRÙNG TÊN (TRỪ CHÍNH NÓ)
+    $check = $conn->prepare("
+        SELECT 1 FROM categories 
+        WHERE category_name = ? AND category_id <> ?
+        LIMIT 1
+    ");
+    $check->bind_param("ss", $name, $id);
+    $check->execute();
+    $check->store_result();
 
-    header("Location: list.php");
-    exit();
+    if ($check->num_rows > 0) {
+        echo "<script>alert('Tên danh mục đã tồn tại!');</script>";
+    } else {
+        $stmt = $conn->prepare("
+            UPDATE categories 
+            SET category_name = ?, category_description = ?
+            WHERE category_id = ?
+        ");
+        $stmt->bind_param("sss", $name, $desc, $id);
+        $stmt->execute();
+
+        header("Location: list.php");
+        exit();
+    }
 }
 ?>
 

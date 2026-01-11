@@ -1,32 +1,50 @@
 <?php
-include '../../include/db_connect.php';     // Kết nối database
-include '../../config.php';                  // Đọc hình ảnh từ Drive hoặc thư mục
-include '../includes/admin_header.php';      // Giao diện admin
+include '../../include/db_connect.php';
+include '../../config.php';
+include '../includes/admin_header.php';
+
+// ===== HÀM HIỂN THỊ THÔNG BÁO GIỐNG STYLE "KHÔNG ĐƯỢC BỎ TRỐNG" =====
+function alert_back($msg) {
+    echo "<script>alert(" . json_encode($msg, JSON_UNESCAPED_UNICODE) . "); history.back();</script>";
+    exit();
+}
 
 // ===== XỬ LÝ THÊM SẢN PHẨM =====
 if (isset($_POST['add'])) {
-    $name = trim($_POST['product_name']);
-    $price = floatval($_POST['product_price']);
-    $stock = intval($_POST['product_stock']);
-    $category_id = $_POST['category_id'];
-    $image = $_FILES['product_image']['name'];
+    $name        = trim($_POST['product_name'] ?? '');
+    $priceRaw    = $_POST['product_price'] ?? '';
+    $stockRaw    = $_POST['product_stock'] ?? '';
+    $category_id = $_POST['category_id'] ?? '';
+    $image       = $_FILES['product_image']['name'] ?? '';
 
-    if (!empty($name) && $price > 0 && $category_id) {
-        // Upload ảnh vào thư mục cục bộ
-        $targetDir = "../../assets/images/";
-        if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
-        $targetFile = $targetDir . basename($image);
-        move_uploaded_file($_FILES["product_image"]["tmp_name"], $targetFile);
-
-        // 🟢 Trigger MySQL tự tạo product_id (SP001,...)
-        $stmt = $conn->prepare("INSERT INTO products (category_id, product_name, price, stock, image_url, created_at, updated_at) 
-                                VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
-        $stmt->bind_param("ssdis", $category_id, $name, $price, $stock, $image);
-        $stmt->execute();
-
-        header("Location: list.php");
-        exit();
+    // Validate giống kiểu "không được bỏ trống"
+    if ($name === '' || $priceRaw === '' || $stockRaw === '' || $category_id === '' || $image === '') {
+        alert_back("Vui lòng nhập đầy đủ thông tin.");
     }
+
+    // Chặn âm + chặn giá trị không hợp lệ
+    if (!is_numeric($priceRaw)) alert_back("Giá không hợp lệ.");
+    if (!is_numeric($stockRaw)) alert_back("Số lượng tồn không hợp lệ.");
+
+    $price = (float)$priceRaw;
+    $stock = (int)$stockRaw;
+
+    if ($price <= 0) alert_back("Giá phải lớn hơn 0.");
+    if ($stock < 0)  alert_back("Số lượng tồn không được âm.");
+
+    // Upload ảnh
+    $targetDir = "../../assets/images/";
+    if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+    $targetFile = $targetDir . basename($image);
+    move_uploaded_file($_FILES["product_image"]["tmp_name"], $targetFile);
+
+    $stmt = $conn->prepare("INSERT INTO products (category_id, product_name, price, stock, image_url, created_at, updated_at) 
+                            VALUES (?, ?, ?, ?, ?, NOW(), NOW())");
+    $stmt->bind_param("ssdis", $category_id, $name, $price, $stock, $image);
+    $stmt->execute();
+
+    header("Location: list.php");
+    exit();
 }
 
 // ===== XÓA SẢN PHẨM =====
@@ -41,17 +59,31 @@ if (isset($_GET['delete'])) {
 
 // ===== SỬA SẢN PHẨM =====
 if (isset($_POST['edit'])) {
-    $id = $_POST['product_id'];
-    $name = trim($_POST['product_name_edit']);
-    $price = floatval($_POST['product_price_edit']);
-    $stock = intval($_POST['product_stock_edit']);
-    $category_id = $_POST['category_id_edit'];
+    $id          = $_POST['product_id'] ?? '';
+    $name        = trim($_POST['product_name_edit'] ?? '');
+    $priceRaw    = $_POST['product_price_edit'] ?? '';
+    $stockRaw    = $_POST['product_stock_edit'] ?? '';
+    $category_id = $_POST['category_id_edit'] ?? '';
+
+    if ($id === '' || $name === '' || $priceRaw === '' || $stockRaw === '' || $category_id === '') {
+        alert_back("Vui lòng nhập đầy đủ thông tin.");
+    }
+
+    if (!is_numeric($priceRaw)) alert_back("Giá không hợp lệ.");
+    if (!is_numeric($stockRaw)) alert_back("Số lượng tồn không hợp lệ.");
+
+    $price = (float)$priceRaw;
+    $stock = (int)$stockRaw;
+
+    if ($price <= 0) alert_back("Giá phải lớn hơn 0.");
+    if ($stock < 0)  alert_back("Số lượng tồn không được âm.");
 
     $stmt = $conn->prepare("UPDATE products 
                             SET product_name=?, price=?, stock=?, category_id=?, updated_at=NOW() 
                             WHERE product_id=?");
     $stmt->bind_param("sdiss", $name, $price, $stock, $category_id, $id);
     $stmt->execute();
+
     header("Location: list.php");
     exit();
 }
@@ -66,11 +98,10 @@ if (isset($_POST['edit'])) {
 
   <input type="text" name="product_name" placeholder="Tên sản phẩm..." required
          style="width:20%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
-  <input type="number" name="product_price" placeholder="Giá (VND)" required
+  <input type="number" name="product_price" placeholder="Giá (VND)" required min="1"
          style="width:15%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
-  <input type="number" name="product_stock" placeholder="Số lượng tồn" required
+  <input type="number" name="product_stock" placeholder="Số lượng" required min="0"
          style="width:10%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
-
   <select name="category_id" required
           style="width:20%; padding:8px; border:1px solid #e0c7b7; border-radius:8px;">
     <option value="">-- Chọn danh mục --</option>
@@ -235,11 +266,11 @@ $result = $conn->query($sql);
                    style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #d8c3b5; border-radius:8px;">
 
             <label>Giá (VND)</label>
-            <input type="number" name="product_price_edit" id="edit_price" required
+            <input type="number" name="product_price_edit" id="edit_price" required min="1"
                    style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #d8c3b5; border-radius:8px;">
 
-            <label>Số lượng tồn kho</label>
-            <input type="number" name="product_stock_edit" id="edit_stock" required
+            <label>Số lượng</label>
+            <input type="number" name="product_stock_edit" id="edit_stock" required min="0"
                    style="width:100%; padding:8px; margin-bottom:10px; border:1px solid #d8c3b5; border-radius:8px;">
 
             <label>Danh mục</label>

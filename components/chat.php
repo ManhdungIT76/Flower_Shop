@@ -9,37 +9,36 @@ ini_set('display_errors', 0);
 $data = json_decode(file_get_contents("php://input"), true);
 $userMessage = trim($data["message"] ?? "");
 
+if (!isset($_SESSION['ctx_waiting_occasion'])) $_SESSION['ctx_waiting_occasion'] = 0;
+if (!isset($_SESSION['ctx_waiting_group'])) $_SESSION['ctx_waiting_group'] = 0;
+
 if ($userMessage === "") {
     echo json_encode(["error" => "Không nhận được tin nhắn từ client"], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 // ================== LOGIN / GUEST ID ==================
-// Nếu chưa đăng nhập -> vẫn lưu lịch sử theo session (guest)
 $userId = "";
 if (isset($_SESSION['user']) && is_array($_SESSION['user']) && isset($_SESSION['user']['id'])) {
-    $userId = (string)$_SESSION['user']['id']; // VD: "KH003"
+    $userId = (string)$_SESSION['user']['id'];
 } else {
     $userId = "GUEST_" . session_id();
 }
+$isLoggedIn = (isset($_SESSION['user']) && is_array($_SESSION['user']) && isset($_SESSION['user']['id']));
 
 // ================== HELPERS ==================
 function isGreetingOnly($text) {
     $t = mb_strtolower(trim($text));
     $t = preg_replace('/[^\p{L}\p{N}\s]/u', '', $t);
 
-    $greetings = [
-        'chào', 'chào shop', 'chào bạn', 'hello', 'hi', 'hey',
-        'xin chào', 'alo', 'ad ơi', 'shop ơi'
-    ];
+    // có số tiền/giá => không coi là greeting
+    if (preg_match('/\b(\d{1,3}\s*k|\d{4,})\b/u', $t)) return false;
+    if (mb_strpos($t, 'dưới') !== false || mb_strpos($t, 'trên') !== false || mb_strpos($t, 'từ') !== false) return false;
 
-    foreach ($greetings as $g) {
-        if ($t === $g) return true;
-    }
+    $greetings = ['chào','chào shop','chào bạn','hello','hi','hey','xin chào','alo','ad ơi','shop ơi'];
+    foreach ($greetings as $g) if ($t === $g) return true;
 
-    if (mb_strlen($t) <= 10 && !preg_match('/hoa|giá|mua|tặng|bó|giỏ/u', $t)) {
-        return true;
-    }
+    if (mb_strlen($t) <= 10 && !preg_match('/hoa|giá|mua|tặng|bó|giỏ|bánh|gấu|trái/u', $t)) return true;
     return false;
 }
 
@@ -47,11 +46,9 @@ function moneyToInt($s) {
     $s = mb_strtolower(trim($s));
     $s = str_replace([',', '.', 'đ', 'vnđ', 'vnd', ' '], '', $s);
 
-    // 100k, 200k
     if (function_exists('str_ends_with') && str_ends_with($s, 'k')) return (float)rtrim($s,'k') * 1000;
     if (!function_exists('str_ends_with') && substr($s, -1) === 'k') return (float)rtrim($s,'k') * 1000;
 
-    // 100000
     return (float)preg_replace('/[^\d]/', '', $s);
 }
 
@@ -59,109 +56,78 @@ function parsePriceRange($text) {
     $t = mb_strtolower($text);
     $min = null; $max = null;
 
-    // "từ 400k đến 500k"
     if (preg_match('/từ\s*([\d\., ]+k?)\s*(đ|vnd|vnđ)?\s*đến\s*([\d\., ]+k?)/iu', $t, $m)) {
         $min = moneyToInt($m[1]);
         $max = moneyToInt($m[3]);
         return [$min, $max];
     }
 
-    // "400k-450k" (dấu - hoặc –)
     if (preg_match('/\b(\d{1,3})\s*k\s*[-–]\s*(\d{1,3})\s*k\b/iu', $t, $m)) {
         $min = (float)$m[1] * 1000;
         $max = (float)$m[2] * 1000;
         return [$min, $max];
     }
 
-    // "dưới 200k"
     if (preg_match('/(dưới|<=|<)\s*([\d\., ]+k?)/iu', $t, $m)) {
         $max = moneyToInt($m[2]);
         return [null, $max];
     }
 
-    // "trên 200k"
     if (preg_match('/(trên|>=|>)\s*([\d\., ]+k?)/iu', $t, $m)) {
         $min = moneyToInt($m[2]);
         return [$min, null];
     }
 
-    // BONUS: bắt số đứng 1 mình "100000"
     if (preg_match('/\b(\d{4,})\b/u', $t, $m)) {
         if (mb_strpos($t, 'dưới') !== false) return [null, (float)$m[1]];
+        if (mb_strpos($t, 'trên') !== false) return [(float)$m[1], null];
     }
 
     return [null, null];
 }
 
-// token số là giá -> không đem đi LIKE product_name
 function isPriceLikeToken($tk) {
     $tk = mb_strtolower(trim($tk));
-    if (preg_match('/^\d+$/u', $tk)) return true;     // 100000
-    if (preg_match('/^\d+k$/u', $tk)) return true;    // 100k
+    if (preg_match('/^\d+$/u', $tk)) return true;
+    if (preg_match('/^\d+k$/u', $tk)) return true;
     return false;
 }
 
-// từ đệm / vô nghĩa -> tránh siết query vào product_name
 function isMeaninglessToken($tk) {
-  $tk = mb_strtolower(trim($tk));
-  $generic = [
-    'rồi','ok','oke','ờ','à','ạ','nha','nhé','đi',
-    'giùm','giúp','cho','tôi','mình','em','anh','chị','bạn','shop','ad',
-    'tìm','mua','chọn','gợi ý','cần','muốn',
-    'sản','phẩm','sản phẩm','mặt hàng','item','sp',
-    'hoa','bó','giỏ','lẵng','kệ','chậu',
-    'dưới','trên','từ','đến','tầm','khoảng','giá'
-  ];
-  return in_array($tk, $generic, true);
+    $tk = mb_strtolower(trim($tk));
+    $generic = [
+        'rồi','ok','oke','ờ','à','ạ','nha','nhé','đi',
+        'giùm','giúp','cho','tôi','mình','em','anh','chị','bạn','shop','ad',
+        'tìm','mua','chọn','gợi ý','cần','muốn',
+        'sản','phẩm','sản phẩm','mặt hàng','item','sp',
+        'hoa','bó','giỏ','lẵng','kệ','chậu',
+        'dưới','trên','từ','đến','tầm','khoảng','giá'
+    ];
+    return in_array($tk, $generic, true);
 }
 
 function extractTokens($text) {
     $t = mb_strtolower($text);
     $t = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $t);
 
-    // stopwords mạnh (bạn có thể bổ sung thêm)
     $stop = [
-
-    // ===== đại từ / xưng hô =====
-    'tôi','mình','em','anh','chị','bạn','shop','ad','admin','chủ shop',
-
-    // ===== động từ chung =====
-    'tìm','tìm kiếm','kiếm','xem','coi','chọn','mua','đặt','order','lấy',
-    'giúp','giúp tôi','giúp mình','hỗ trợ','tư vấn','cho','cho tôi','cho mình',
-
-    // ===== lượng từ / định lượng =====
-    'một','vài','mấy','nhiều','ít','tất cả','toàn bộ','bất kỳ',
-    'khoảng','tầm','tầm khoảng','tầm giá',
-
-    // ===== câu hỏi / tình thái =====
-    'không','không ạ','không nhỉ','được không','được ko','ko','k','hok',
-    'nhỉ','ạ','ơi','vậy','thế','nào','gì','sao','không biết',
-
-    // ===== danh từ chung gây nhiễu =====
-    'sản','phẩm','sản phẩm','mặt hàng','item','items','sp','hàng',
-
-    // ===== liên từ / giới từ =====
-    'với','và','hay','hoặc','là','thì','mà',
-
-    // ===== giá cả (đã parse riêng) =====
-    'giá','giá cả','bao nhiêu','tiền','đồng','vnđ','vnd','đ',
-    'rẻ','rẻ nhất','cao','thấp',
-
-    // ===== phạm vi =====
-    'dưới','trên','từ','đến','<=','>=','<','>',
-
-    // ===== hình thức =====
-    'loại','mẫu','kiểu','dạng','size','form','phong cách',
-
-    // ===== hoa chung (để KHÔNG siết tên sản phẩm) =====
-    'hoa','bó','giỏ','lẵng','kệ','chậu','cây',
-
-    // ===== xã giao / lịch sự =====
-    'vui lòng','làm ơn','nhé','giùm','giúp với',
-
-    // ===== khác =====
-    'còn','nữa','thêm','gợi ý','đề xuất','recommend'
-];
+        'tôi','mình','em','anh','chị','bạn','shop','ad','admin','chủ shop',
+        'tìm','tìm kiếm','kiếm','xem','coi','chọn','mua','đặt','order','lấy',
+        'giúp','giúp tôi','giúp mình','hỗ trợ','tư vấn','cho','cho tôi','cho mình',
+        'một','vài','mấy','nhiều','ít','tất cả','toàn bộ','bất kỳ',
+        'khoảng','tầm','tầm khoảng','tầm giá',
+        'không','không ạ','không nhỉ','được không','được ko','ko','k','hok',
+        'nhỉ','ạ','ơi','vậy','thế','nào','gì','sao','không biết',
+        'sản','phẩm','sản phẩm','mặt hàng','item','items','sp','hàng',
+        'với','và','hay','hoặc','là','thì','mà',
+        'giá','giá cả','bao nhiêu','tiền','đồng','vnđ','vnd','đ',
+        'rẻ','rẻ nhất','cao','thấp',
+        'dưới','trên','từ','đến','<=','>=','<','>',
+        'loại','mẫu','kiểu','dạng','size','form','phong cách',
+        'hoa','bó','giỏ','lẵng','kệ','chậu','cây',
+        'vui lòng','làm ơn','nhé','giùm','giúp với',
+        'còn','nữa','thêm','gợi ý','đề xuất','recommend'
+    ];
 
     foreach ($stop as $w) {
         $t = preg_replace('/\b'.preg_quote($w,'/').'\b/u', ' ', $t);
@@ -173,7 +139,7 @@ function extractTokens($text) {
     $parts = explode(' ', $t);
     $joined = implode(' ', $parts);
 
-    $phrases = ['cẩm tú cầu','hoa hồng','hoa tulip','cẩm chướng','lan hồ điệp','hướng dương','mẫu đơn'];
+    $phrases = ['cẩm tú cầu','hoa hồng','hoa tulip','cẩm chướng','lan hồ điệp','hướng dương','mẫu đơn','bánh kem','gấu bông','trái cây'];
     $tokens = [];
 
     foreach ($phrases as $ph) {
@@ -181,8 +147,8 @@ function extractTokens($text) {
     }
 
     foreach ($parts as $p) {
-        if (isPriceLikeToken($p)) continue;       // bỏ token giá
-        if (isMeaninglessToken($p)) continue;     // bỏ từ đệm
+        if (isPriceLikeToken($p)) continue;
+        if (isMeaninglessToken($p)) continue;
         if (mb_strlen($p) >= 3) $tokens[] = $p;
         if (count($tokens) >= 7) break;
     }
@@ -199,12 +165,9 @@ function detectOccasion($text) {
         '8/3'       => ['8/3','8-3','quốc tế phụ nữ'],
         'khai trương'=> ['khai trương','mở cửa','opening'],
         'cưới'      => ['cưới','wedding','cô dâu'],
-        'chia buồn' => ['chia buồn','đám tang','viếng','tang lễ'],
     ];
     foreach ($map as $key => $words) {
-        foreach ($words as $w) {
-            if ($w !== '' && mb_strpos($t, $w) !== false) return $key;
-        }
+        foreach ($words as $w) if ($w !== '' && mb_strpos($t, $w) !== false) return $key;
     }
     return null;
 }
@@ -212,9 +175,7 @@ function detectOccasion($text) {
 function detectColor($text) {
     $t = mb_strtolower($text);
     $colors = ['đỏ','hồng','trắng','vàng','tím','xanh'];
-    foreach ($colors as $c) {
-        if (preg_match('/\b'.preg_quote($c,'/').'\b/u', $t)) return $c;
-    }
+    foreach ($colors as $c) if (preg_match('/\b'.preg_quote($c,'/').'\b/u', $t)) return $c;
     return null;
 }
 
@@ -224,6 +185,88 @@ function detectStyle($text) {
     if (mb_strpos($t,'bó') !== false) return 'bó';
     if (mb_strpos($t,'hộp') !== false) return 'hộp';
     if (mb_strpos($t,'lẵng') !== false) return 'lẵng';
+    return null;
+}
+
+function isFollowUpMessage($text) {
+    $t = mb_strtolower(trim($text));
+    if (preg_match('/^\s*(thế\s+)?còn\b/iu', $t)) return true;
+    if (preg_match('/^\s*(vậy\s+)?còn\b/iu', $t)) return true;
+    if (preg_match('/^\s*nếu\b/iu', $t)) return true;
+    if (preg_match('/\bthì\s*sao\b/iu', $t)) return true;
+
+    $followUps = ['còn gì nữa', 'còn nữa không', 'còn không', 'thêm', 'gợi ý thêm', 'có nữa không', 'xem thêm'];
+    foreach ($followUps as $fu) if (mb_strpos($t, $fu) !== false) return true;
+    return false;
+}
+
+function isOnlyPriceChange($text) {
+    $t = mb_strtolower($text);
+    if (!preg_match('/\b(\d{1,3}\s*k|\d{4,})\b/u', $t)) return false;
+
+    // nếu có nhắc rõ loại thì không phải "chỉ giá"
+    if (preg_match('/\b(hoa|bánh|bánh kem|gấu|gấu bông|trái|trái cây|giỏ|bó|lẵng|cây)\b/iu', $t)) return false;
+    return true;
+}
+
+function isMoreRequest($text) {
+    $t = mb_strtolower($text);
+    $more = ['còn gì nữa', 'còn nữa không', 'thêm', 'gợi ý thêm', 'có nữa không', 'xem thêm'];
+    foreach ($more as $m) if (mb_strpos($t, $m) !== false) return true;
+    return false;
+}
+
+// ====== GROUP ======
+function detectGroup($text) {
+    $t = mb_strtolower($text);
+    if (preg_match('/\b(gấu|gấu bông|thú bông)\b/u', $t)) return 'bear';
+    if (preg_match('/\b(bánh|bánh kem|cake)\b/u', $t)) return 'cake';
+    if (preg_match('/\b(trái cây|hoa quả|giỏ trái cây)\b/u', $t)) return 'fruit';
+    if (preg_match('/\bhoa\b/u', $t)) return 'flower';
+    return null;
+}
+
+function getGroupCategoryIds($group) {
+    $map = [
+        'flower' => ['DM002','DM003','DM004','DM005','DM006'],
+        'bear'   => ['DM009'],
+        'cake'   => ['DM008'],
+        'fruit'  => ['DM010'],
+    ];
+    return $map[$group] ?? [];
+}
+
+function occasionToCategories($occasion) {
+    // KHÔNG ép DM002 nếu muốn tránh trả sai loại
+    $map = [
+        'sinh nhật'   => ['DM003','DM004','DM006'],
+        'valentine'   => ['DM003','DM004'],
+        '8/3'         => ['DM003','DM004'],
+        '20/10'       => ['DM003','DM004'],
+        'khai trương' => ['DM005'],
+        'cưới'        => ['DM006'],
+    ];
+    return $map[$occasion] ?? [];
+}
+
+function detectCategory($text) {
+    $t = mb_strtolower($text);
+    $map = [
+        'DM002' => ['hoa lẻ', 'hoa đơn', 'hoa tươi'],
+        'DM003' => ['bó hoa', 'hoa bó'],
+        'DM004' => ['giỏ hoa'],
+        'DM005' => ['khai trương', 'hoa khai trương'],
+        'DM006' => ['chúc mừng', 'hoa chúc mừng'],
+        'DM007' => ['cây', 'cây cảnh', 'cây mini'],
+        'DM008' => ['bánh', 'bánh kem', 'cake'],
+        'DM009' => ['gấu', 'gấu bông', 'thú bông'],
+        'DM010' => ['trái cây', 'giỏ trái cây', 'hoa quả'],
+    ];
+    foreach ($map as $catId => $keywords) {
+        foreach ($keywords as $kw) {
+            if (mb_strpos($t, $kw) !== false) return $catId;
+        }
+    }
     return null;
 }
 
@@ -243,6 +286,27 @@ function saveChat($conn, $userId, $role, $message) {
     return $ok;
 }
 
+function loadRecentChatForAI($conn, $userId, $limit = 4, $offset = 1) {
+    $rows = [];
+    $uid = $conn->real_escape_string($userId);
+
+    $sql = "SELECT role, message
+            FROM chat_history
+            WHERE user_id = '$uid'
+            ORDER BY id DESC
+            LIMIT " . intval($limit) . " OFFSET " . intval($offset);
+
+    $rs = $conn->query($sql);
+    if (!$rs) return [];
+
+    while ($r = $rs->fetch_assoc()) {
+        $role = ($r['role'] === 'bot') ? 'assistant' : 'user';
+        $msg  = (string)($r['message'] ?? '');
+        if ($msg !== '') $rows[] = ["role" => $role, "content" => $msg];
+    }
+    return array_reverse($rows);
+}
+
 // ================== DB CONNECT ==================
 $host = "localhost";
 $user = "root";
@@ -257,109 +321,211 @@ if ($conn->connect_error) {
     exit;
 }
 
-// ✅ Lưu tin nhắn user (luôn lưu kể cả guest)
-saveChat($conn, $userId, "user", $userMessage);
+if (!isset($_SESSION['ctx_seen_ids'])) $_SESSION['ctx_seen_ids'] = [];
+if (!isset($_SESSION['ctx_offset'])) $_SESSION['ctx_offset'] = 0;
 
-// ================== GREETING ONLY (ĐẶT SAU DB để còn lưu) ==================
+// ✅ Lưu tin nhắn user
+if ($isLoggedIn) saveChat($conn, $userId, "user", $userMessage);
+
+// ================== GREETING ==================
 if (isGreetingOnly($userMessage)) {
     $reply = "Chào anh/chị ạ 🌸<br>
     Em là trợ lý của <b>Blossomy Bliss</b>.<br>
     Anh/chị cần em hỗ trợ tìm hoa theo <b>dịp tặng</b>, <b>ngân sách</b> hay <b>loại hoa</b> nào không ạ?";
 
-    saveChat($conn, $userId, "bot", strip_tags($reply)); // lưu text gọn (tuỳ bạn)
-
+    if ($isLoggedIn) saveChat($conn, $userId, "bot", strip_tags($reply));
     $conn->close();
     echo json_encode(["reply" => $reply, "products" => []], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-function detectCategory($text) {
-    $t = mb_strtolower($text);
+// ================== CATEGORY LIST INTENT ==================
+if (preg_match('/(danh mục|loại sản phẩm|shop có những danh mục|shop có những gì|bán những gì)/iu', $userMessage)) {
 
-    $map = [
-        'DM002' => ['hoa lẻ', 'hoa đơn', 'hoa tươi'],
-        'DM003' => ['bó hoa', 'hoa bó'],
-        'DM004' => ['giỏ hoa'],
-        'DM005' => ['khai trương', 'hoa khai trương'],
-        'DM006' => ['chúc mừng', 'hoa chúc mừng'],
-        'DM007' => ['cây', 'cây cảnh', 'cây mini'],
-        'DM008' => ['bánh', 'bánh kem', 'cake'],
-        'DM009' => ['gấu', 'gấu bông', 'thú bông'],
-        'DM010' => ['trái cây', 'giỏ trái cây', 'hoa quả'],
-    ];
+    $sql = "SELECT category_name FROM categories ORDER BY category_name";
+    $rs = $conn->query($sql);
 
-    foreach ($map as $catId => $keywords) {
-        foreach ($keywords as $kw) {
-            if (mb_strpos($t, $kw) !== false) {
-                return $catId;
-            }
-        }
+    $cats = [];
+    if ($rs) {
+        while ($r = $rs->fetch_assoc()) $cats[] = $r['category_name'];
     }
-    return null;
+
+    if (!empty($cats)) {
+        $reply = "Hiện tại shop có các danh mục sau ạ:<br>• " . implode("<br>• ", $cats);
+    } else {
+        $reply = "Hiện tại shop chưa cấu hình danh mục sản phẩm ạ.";
+    }
+
+    if ($isLoggedIn) saveChat($conn, $userId, "bot", strip_tags($reply));
+    $conn->close();
+
+    echo json_encode(["reply" => $reply, "products" => []], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-// ================== BUILD FILTER + QUERY ==================
-[$minPrice, $maxPrice] = parsePriceRange($userMessage);
+// ================== BUILD FILTER (ORDER FIXED) ==================
+$t = mb_strtolower($userMessage);
 
-// lưu context giá
+[$minPrice, $maxPrice] = parsePriceRange($userMessage);
+$isFollowUp = isFollowUpMessage($userMessage);
+$isMore = ($isFollowUp && isMoreRequest($userMessage));
+
+// ---- detect intent FIRST (để không dùng biến chưa khởi tạo) ----
+$tokens     = extractTokens($userMessage);
+$occasionNow = detectOccasion($userMessage);
+$occasion   = $occasionNow;
+$color      = detectColor($userMessage);
+$style      = detectStyle($userMessage);
+$categoryId = detectCategory($userMessage);
+$group      = detectGroup($userMessage);
+$kw         = array_slice($tokens, 0, 5);
+
+// ---- occasion context ----
+$askingOccasion = (mb_strpos($t, 'dịp') !== false || mb_strpos($t, 'tặng') !== false);
+
+if ($askingOccasion && $occasionNow === null && empty($_SESSION['ctx_occasion'])) {
+    $_SESSION['ctx_waiting_occasion'] = 1;
+    $reply = "Anh/chị tặng dịp nào ạ? (sinh nhật / valentine / 8/3 / 20/10 / khai trương / cưới / chia buồn)";
+    if ($isLoggedIn) saveChat($conn, $userId, "bot", strip_tags($reply));
+    $conn->close();
+    echo json_encode(["reply" => $reply, "products" => []], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($_SESSION['ctx_waiting_occasion'] == 1 && $occasionNow !== null) {
+    $_SESSION['ctx_occasion'] = $occasionNow;
+    $_SESSION['ctx_waiting_occasion'] = 0;
+    $_SESSION['ctx_offset'] = 0;
+    $_SESSION['ctx_seen_ids'] = [];
+}
+
+// dùng lại occasion cũ nếu không nhắc
+if ($occasion === null && !empty($_SESSION['ctx_occasion'])) $occasion = $_SESSION['ctx_occasion'];
+if ($occasion !== null) $_SESSION['ctx_occasion'] = $occasion;
+
+// ---- group/category context ----
+if ($group !== null) $_SESSION['ctx_group'] = $group;
+if ($categoryId !== null) $_SESSION['ctx_categoryId'] = $categoryId;
+if (!empty($kw)) $_SESSION['ctx_kw'] = $kw;
+
+// ưu tiên group theo category nếu user nói rõ
+if ($categoryId !== null) {
+    if ($categoryId === 'DM009') $_SESSION['ctx_group'] = 'bear';
+    else if ($categoryId === 'DM008') $_SESSION['ctx_group'] = 'cake';
+    else if ($categoryId === 'DM010') $_SESSION['ctx_group'] = 'fruit';
+    else if (in_array($categoryId, getGroupCategoryIds('flower'), true)) $_SESSION['ctx_group'] = 'flower';
+}
+
+// nếu bot đang hỏi group (vì user chỉ nói giá)
+if (!empty($_SESSION['ctx_waiting_group'])) {
+    $g = detectGroup($userMessage);
+    if ($g !== null) {
+        $_SESSION['ctx_group'] = $g;
+        $_SESSION['ctx_waiting_group'] = 0;
+        $_SESSION['ctx_offset'] = 0;
+        $_SESSION['ctx_seen_ids'] = [];
+    }
+}
+
+// ---- chỉ nói giá -> dùng lại ngữ cảnh hoặc hỏi loại ----
+if (isOnlyPriceChange($userMessage)) {
+    $hasContext = !empty($_SESSION['ctx_kw']) || !empty($_SESSION['ctx_group']) || !empty($_SESSION['ctx_categoryId']) || !empty($_SESSION['ctx_occasion']);
+
+    if (!$hasContext) {
+        $_SESSION['ctx_waiting_group'] = 1;
+        $reply = "Anh/chị muốn tìm theo mức giá này cho loại sản phẩm nào ạ? (hoa / bánh / gấu / trái cây)";
+        if ($isLoggedIn) saveChat($conn, $userId, "bot", strip_tags($reply));
+        $conn->close();
+        echo json_encode(["reply" => $reply, "products" => []], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // có ngữ cảnh -> dùng lại
+    if (empty($kw) && !empty($_SESSION['ctx_kw'])) $kw = $_SESSION['ctx_kw'];
+    if ($categoryId === null && !empty($_SESSION['ctx_categoryId'])) $categoryId = $_SESSION['ctx_categoryId'];
+    if ($group === null && !empty($_SESSION['ctx_group'])) $group = $_SESSION['ctx_group'];
+    if ($occasion === null && !empty($_SESSION['ctx_occasion'])) $occasion = $_SESSION['ctx_occasion'];
+}
+
+// ---- lưu context giá ----
 if ($minPrice !== null || $maxPrice !== null) {
     $_SESSION['ctx_minPrice'] = $minPrice;
     $_SESSION['ctx_maxPrice'] = $maxPrice;
 }
 
-// follow-up (còn gì nữa...) -> dùng lại giá cũ
-$msgLower = mb_strtolower($userMessage);
-$followUps = ['còn gì nữa', 'còn nữa không', 'còn không', 'thêm', 'gợi ý thêm', 'có nữa không'];
-
-$isFollowUp = false;
-foreach ($followUps as $fu) {
-    if (mb_strpos($msgLower, $fu) !== false) { $isFollowUp = true; break; }
-}
+// follow-up mà không nói giá mới -> dùng lại
 if ($isFollowUp && $minPrice === null && $maxPrice === null) {
     $minPrice = $_SESSION['ctx_minPrice'] ?? null;
     $maxPrice = $_SESSION['ctx_maxPrice'] ?? null;
 }
 
-$tokens   = extractTokens($userMessage);
-$occasion = detectOccasion($userMessage);
-$color    = detectColor($userMessage);
-$style    = detectStyle($userMessage);
-$categoryId = detectCategory($userMessage);
-// lưu context category nếu user có nói
-if ($categoryId !== null) {
-    $_SESSION['ctx_categoryId'] = $categoryId;
+// đổi giá (không phải "còn gì nữa") -> reset offset + reset seen
+if (($minPrice !== null || $maxPrice !== null) && !$isMore) {
+    $_SESSION['ctx_offset'] = 0;
+    $_SESSION['ctx_seen_ids'] = [];
 }
 
-// follow-up mà không nói category -> dùng lại category cũ
-if ($isFollowUp && $categoryId === null) {
-    $categoryId = $_SESSION['ctx_categoryId'] ?? null;
+// "còn gì nữa" -> tăng offset
+if ($isMore) {
+    $_SESSION['ctx_offset'] += 10;
 }
+$offset = (int)$_SESSION['ctx_offset'];
 
+// hasKeywordIntent
+$hasTextFilter = (!empty($kw) || $color || $style);
 
+// ================== QUERY ==================
 $sql = "SELECT product_id, category_id, product_name, price, stock, image_url
         FROM products
         WHERE 1=1";
 $params = [];
 $types  = "";
 
-// Giá (lọc cứng)
+// giá
 if ($minPrice !== null) { $sql .= " AND price >= ?"; $params[] = (float)$minPrice; $types .= "d"; }
 if ($maxPrice !== null) { $sql .= " AND price <= ?"; $params[] = (float)$maxPrice; $types .= "d"; }
 
+// category cụ thể
 if ($categoryId !== null) {
     $sql .= " AND category_id = ?";
     $params[] = $categoryId;
     $types .= "s";
 }
 
-// Keyword OR: CHỈ bật khi có “ý nghĩa”
-$kw = array_slice($tokens, 0, 5);
-$orParts = [];
+// group filter (ưu tiên group khi đã có)
+$groupSess = $_SESSION['ctx_group'] ?? null;
+if ($categoryId === null && $groupSess !== null) {
+    $groupCats = getGroupCategoryIds($groupSess);
+    if (!empty($groupCats)) {
+        $placeholders = implode(',', array_fill(0, count($groupCats), '?'));
+        $sql .= " AND category_id IN ($placeholders)";
+        foreach ($groupCats as $c) { $params[] = $c; $types .= "s"; }
+    }
+} else {
+    // chỉ dùng occasion filter khi KHÔNG có group/category
+    if ($categoryId === null && $occasion) {
+        $ocats = occasionToCategories($occasion);
+        if (!empty($ocats)) {
+            $placeholders = implode(',', array_fill(0, count($ocats), '?'));
+            $sql .= " AND category_id IN ($placeholders)";
+            foreach ($ocats as $c) { $params[] = $c; $types .= "s"; }
+        }
+    }
+}
 
-// ✅ điều kiện bật keyword: có token chữ ý nghĩa hoặc có màu/kiểu/dịp
-$hasKeywordIntent = (!empty($kw) || $color || $style || $occasion || $categoryId);
+// loại sản phẩm đã gợi ý: chỉ loại khi user xin thêm ("còn gì nữa")
+$seenIds = $_SESSION['ctx_seen_ids'] ?? [];
+if ($isMore && !empty($seenIds)) {
+    $seenIds = array_values(array_unique($seenIds));
+    $placeholders = implode(',', array_fill(0, count($seenIds), '?'));
+    $sql .= " AND product_id NOT IN ($placeholders)";
+    foreach ($seenIds as $id) { $params[] = $id; $types .= "s"; }
+}
 
-if ($hasKeywordIntent) {
+// keyword OR
+if ($hasTextFilter) {
+    $orParts = [];
+
     foreach ($kw as $tk) {
         if ($tk === '' || isPriceLikeToken($tk) || isMeaninglessToken($tk)) continue;
         $orParts[] = "product_name LIKE ?";
@@ -368,14 +534,14 @@ if ($hasKeywordIntent) {
     }
     if ($color)    { $orParts[] = "product_name LIKE ?"; $params[] = "%".$color."%";    $types .= "s"; }
     if ($style)    { $orParts[] = "product_name LIKE ?"; $params[] = "%".$style."%";    $types .= "s"; }
-    if ($occasion) { $orParts[] = "product_name LIKE ?"; $params[] = "%".$occasion."%"; $types .= "s"; }
+    // KHÔNG thêm $occasion vào LIKE để tránh lọc rỗng (vì tên SP thường không chứa "sinh nhật/valentine")
 
-    if (!empty($orParts)) {
-        $sql .= " AND (" . implode(" OR ", $orParts) . ")";
-    }
+    if (!empty($orParts)) $sql .= " AND (" . implode(" OR ", $orParts) . ")";
 }
 
-$sql .= " ORDER BY (stock > 0) DESC, stock DESC, price ASC LIMIT 80";
+$sql .= " ORDER BY (stock > 0) DESC, stock DESC, price ASC LIMIT 80 OFFSET ?";
+$params[] = $offset;
+$types .= "i";
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
@@ -383,12 +549,11 @@ if (!$stmt) {
     echo json_encode(["error" => "SQL prepare error: " . $conn->error], JSON_UNESCAPED_UNICODE);
     exit;
 }
-if (!empty($params)) $stmt->bind_param($types, ...$params);
-
+$stmt->bind_param($types, ...$params);
 $stmt->execute();
 $res = $stmt->get_result();
 
-// Rank/scoring
+// ================== RANKING ==================
 $candidates = [];
 while ($row = $res->fetch_assoc()) {
     $name = mb_strtolower($row['product_name'] ?? '');
@@ -404,7 +569,6 @@ while ($row = $res->fetch_assoc()) {
     }
     if ($color && mb_strpos($name, $color) !== false) $score += 15;
     if ($style && mb_strpos($name, $style) !== false) $score += 10;
-    if ($occasion && mb_strpos($name, $occasion) !== false) $score += 12;
 
     if ($minPrice !== null || $maxPrice !== null) {
         $center = null;
@@ -422,9 +586,7 @@ while ($row = $res->fetch_assoc()) {
 $stmt->close();
 
 usort($candidates, function($a, $b) {
-    $sa = $a['_score'] ?? 0;
-    $sb = $b['_score'] ?? 0;
-    return $sb <=> $sa;
+    return ($b['_score'] ?? 0) <=> ($a['_score'] ?? 0);
 });
 
 // Diversify top 10
@@ -445,7 +607,7 @@ foreach ($candidates as $row) {
     $finalRows[] = $row;
 }
 
-// Hard filter lại theo giá (an toàn)
+// hard filter giá
 if ($minPrice !== null || $maxPrice !== null) {
     $finalRows = array_values(array_filter($finalRows, function($r) use ($minPrice, $maxPrice) {
         $p = (float)($r['price'] ?? 0);
@@ -455,9 +617,8 @@ if ($minPrice !== null || $maxPrice !== null) {
     }));
 }
 
-// fallback chỉ khi user hỏi chung chung (không giá + không keyword)
-$hasHardConstraint = ($minPrice !== null || $maxPrice !== null);
-if (empty($finalRows) && !$hasHardConstraint && !$hasKeywordIntent) {
+// fallback chỉ khi hỏi chung chung và không có intent
+if (empty($finalRows) && ($minPrice === null && $maxPrice === null) && !$hasKeywordIntent) {
     $sql2 = "SELECT product_id, category_id, product_name, price, stock, image_url
              FROM products
              ORDER BY (stock > 0) DESC, stock DESC, price ASC
@@ -465,6 +626,13 @@ if (empty($finalRows) && !$hasHardConstraint && !$hasKeywordIntent) {
     $res2 = $conn->query($sql2);
     if ($res2) while ($row = $res2->fetch_assoc()) $finalRows[] = $row;
 }
+
+// cập nhật danh sách đã gợi ý: chỉ để phục vụ "còn gì nữa" tránh lặp
+foreach ($finalRows as $r) {
+    if (!empty($r['product_id'])) $_SESSION['ctx_seen_ids'][] = $r['product_id'];
+}
+$_SESSION['ctx_seen_ids'] = array_values(array_unique($_SESSION['ctx_seen_ids']));
+$_SESSION['ctx_seen_ids'] = array_slice($_SESSION['ctx_seen_ids'], -200);
 
 // ================== BUILD PRODUCT LIST FOR AI ==================
 $products = [];
@@ -515,16 +683,23 @@ Danh sách sản phẩm phù hợp (tối đa 10):
 
 Hãy trả lời tự nhiên, dễ hiểu.";
 
-$apiKey = "sk-mega-215cc97393b9d1365654e747f1f2675140ca7692e44218f51c49649d84b833f0"; // dán key
+// ================== CALL AI ==================
+$apiKey = "sk-mega-dc457e6da99886b50bebac679c212a4fdbe7ea3f0b21c2521147c5abd6f98c43"; // dán key
 $modelName = "openai-gpt-oss-20b";
 $url = "https://ai.megallm.io/v1/chat/completions?api_key=" . urlencode($apiKey);
 
+// đưa lịch sử chat vào messages
+$historyMsgs = $isLoggedIn ? loadRecentChatForAI($conn, $userId, 4, 1) : [];
+
+$messages = array_merge(
+    [["role" => "system", "content" => $systemPrompt]],
+    $historyMsgs,
+    [["role" => "user", "content" => $userPrompt]]
+);
+
 $payload = [
     "model" => $modelName,
-    "messages" => [
-        ["role" => "system", "content" => $systemPrompt],
-        ["role" => "user", "content" => $userPrompt]
-    ],
+    "messages" => $messages,
     "temperature" => 0.6
 ];
 
@@ -559,8 +734,8 @@ $decoded = json_decode($response, true);
 $reply = $decoded["choices"][0]["message"]["content"] ?? null;
 $finalReply = $reply ?: "Xin lỗi anh/chị, em chưa nhận được phản hồi từ hệ thống.";
 
-// ✅ Lưu tin nhắn bot (luôn lưu kể cả guest)
-saveChat($conn, $userId, "bot", $finalReply);
+// lưu tin nhắn bot
+if ($isLoggedIn) saveChat($conn, $userId, "bot", $finalReply);
 
 $conn->close();
 
