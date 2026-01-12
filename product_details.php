@@ -81,6 +81,7 @@ $reviews = $stmt_rev->get_result();
 // ==============================
 // SẢN PHẨM LIÊN QUAN: cùng loại + ngang tầm giá
 // ==============================
+$current_price = (float)($product['price'] ?? 0);
 $min_price = $current_price * 0.85;
 $max_price = $current_price * 1.15;
 

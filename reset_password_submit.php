@@ -2,18 +2,21 @@
 session_start();
 include 'include/db_connect.php';
 
-$token = trim($_POST['token'] ?? '');
-$new_password = trim($_POST['new_password'] ?? '');
-$confirm_password = trim($_POST['confirm_password'] ?? '');
+$token            = trim($_POST['token'] ?? '');
+$new_password     = $_POST['new_password'] ?? '';
+$confirm_password = $_POST['confirm_password'] ?? '';
 
-$status = ""; // success | mismatch | expired | bad | empty
+$status = ""; // success | mismatch | expired | bad | empty | invalid_pass
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
     $status = "bad";
-} elseif ($token === "" || $new_password === "" || $confirm_password === "") {
+} elseif ($token === "" || trim($new_password) === "" || trim($confirm_password) === "") {
     $status = "empty";
 } elseif ($new_password !== $confirm_password) {
     $status = "mismatch";
+} elseif (strlen($new_password) < 6 || preg_match('/\s/', $new_password)) {
+    // >= 6 ký tự và không có dấu cách/tab/newline
+    $status = "invalid_pass";
 } else {
     $token_hash = hash('sha256', $token);
 
@@ -27,8 +30,10 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") {
         $exp = $u['reset_token_expires'];
 
         if ($exp !== null && strtotime($exp) >= time()) {
+            // HASH PASSWORD (không lưu plaintext)
+            $hashed = $new_password;
             $upd = $conn->prepare("UPDATE users SET password=?, reset_token_hash=NULL, reset_token_expires=NULL WHERE user_id=?");
-            $upd->bind_param("ss", $new_password, $u['user_id']);
+            $upd->bind_param("ss", $hashed, $u['user_id']);
             $upd->execute();
             $upd->close();
 
@@ -47,8 +52,8 @@ $conn->close();
 
 // URL quay về
 $back_url = "login.php";
-// nếu lỗi mismatch/empty thì quay lại trang reset để sửa
-if ($status === "mismatch" || $status === "empty") {
+// nếu lỗi mismatch/empty/invalid_pass thì quay lại trang reset để sửa
+if (in_array($status, ["mismatch", "empty", "invalid_pass"], true)) {
     $back_url = "javascript:history.back()";
 }
 ?>
